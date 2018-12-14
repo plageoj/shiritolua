@@ -12,7 +12,7 @@ local shibariLtrEndTime, shibariLngEndTime = 0, 0
 local config = require './config.lua'
 local ut = require './utils.lua'
 
-if os.getenv 'USER' == '' then
+if not os.getenv 'USER' then
 	http.createServer('0.0.0.0', os.getenv 'PORT' + 0)
 end
 

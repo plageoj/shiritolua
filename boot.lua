@@ -9,6 +9,8 @@ local wordlist = {}
 
 dofile './config.lua'
 
+http.createServer('0.0.0.0', os.getenv 'PORT' + 0)
+
 client:on('ready', function()
 	print(client.user.username)
 end)

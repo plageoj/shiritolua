@@ -32,7 +32,6 @@ function _M:yomiOf(kanji)
 end
 
 function _M:process(kanji)
-	print(kanji)
 	local hiragana, words = self:yomiOf(kanji):gsub('[!-~]', ''):gsub(' ','')
 	local processed = hiragana:gsub('ー', '')
 	local count = -3
@@ -53,6 +52,8 @@ function _M:process(kanji)
 		local _, occurrences = hiragana:gsub(ltr, '')
 		yomiLen = yomiLen - occurrences
 	end
+
+	print(kanji, hiragana, processed, yomilen)
 
 	return hiragana, words, processed, processed:sub(count), math.floor(yomiLen / 3)
 end

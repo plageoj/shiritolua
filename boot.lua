@@ -44,11 +44,11 @@ client:on('messageCreate', function(message)
 	end
 
 	if shibariLtrEndTime > os.time() and prefix ~= suffix then
-		message.channel:send(comboLtr.letter..'縛り持続中！あと'..tostring(math.ceil((shibariLtrEndTime - os.time()) / minutes))..'分')
+		message.channel:send(comboLtr.letter..'縛り持続中！残'..tostring(math.ceil((shibariLtrEndTime - os.time()) / minutes))..'分')
 		return
 	end
 	if shibariLngEndTime > os.time() and comboLng.length ~= yomilen then
-		message.channel:send(tostring(comboLng.length / 3)..'文字縛り持続中！あと'..tostring(math.ceil((shibariLngEndTime - os.time()) / minutes))..'分')
+		message.channel:send(tostring(comboLng.length)..'音縛り持続中！'..hiragana..'は'..tostring(yomilen)..'音です。残'..tostring(math.ceil((shibariLngEndTime - os.time()) / minutes))..'分')
 		return
 	end
 
@@ -69,7 +69,7 @@ client:on('messageCreate', function(message)
 
 		if comboLtr.times == config.shibariThreshold and shibariLngEndTime <= os.time() then
 			shibariLtrEndTime = os.time() + config.shibariLasts * minutes
-			message.channel:send(lastword..'縛り発動！あと'..tostring(config.shibariLasts)..'分')
+			message.channel:send(lastword..'縛り発動！残'..tostring(config.shibariLasts)..'分')
 		end
 	else
 		comboLtr.times, comboLtr.letter = 0, suffix
@@ -77,11 +77,11 @@ client:on('messageCreate', function(message)
 
 	if comboLng.length == yomilen then
 		comboLng.times = comboLng.times + 1
-		hiragana = hiragana .. ' = ' .. tostring(yomilen)
+		hiragana = hiragana .. ' = ' .. tostring(yomilen)..'音'
 
 		if comboLng.times == config.shibariThreshold and shibariLtrEndTime <= os.time() then
 			shibariLngEndTime = os.time() + config.shibariLasts * minutes
-			message.channel:send(tostring(yomilen)..'文字縛り発動！あと'..tostring(config.shibariLasts)..'分')
+			message.channel:send(tostring(yomilen)..'音縛り発動！残'..tostring(config.shibariLasts)..'分')
 		end
 	else
 		comboLng.times, comboLng.length = 0, yomilen

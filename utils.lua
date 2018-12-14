@@ -41,7 +41,7 @@ function _M:process(kanji)
 
 	if
 	self:includes(smallLtr,	function(itm)
-		return processed:find(itm, -3)
+		return processed:find(itm, -3) ~= nil
 	end)
 	then
 		count = -6

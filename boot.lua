@@ -18,7 +18,7 @@ if not os.getenv 'USER' then
 end
 
 client:on('ready', function()
-	print(client.user.username)
+	print(client.user.username .. ' is ready!')
 end)
 
 client:on('messageCreate', function(message)

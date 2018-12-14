@@ -36,7 +36,7 @@ function _M:process(kanji)
 	local hiraganar = {
 		'[!-~]', '「', '」', '！', '？', '｛', '｝', '＿', '＊', '％',
 		'。', '、', '｜', '＝', '＜', '＞', '＾', '～', '￥','＋', '・', '；',
-		'：', '…', '‥'
+		'：', '…', '‥', '（', '）', '’'
 	}
 
 	for i, str in ipairs(hiraganar) do
@@ -49,9 +49,9 @@ function _M:process(kanji)
 	local smallLtr = {'ゃ', 'ゅ', 'ょ', 'っ', 'ぁ', 'ぃ', 'ぅ', 'ぇ', 'ぉ'}
 
 	if
-	self:includes(smallLtr,	function(itm)
-		return processed:find(itm, -3) ~= nil
-	end)
+		self:includes(smallLtr,	function(itm)
+			return processed:find(itm, -3) ~= nil
+		end)
 	then
 		count = -6
 	end

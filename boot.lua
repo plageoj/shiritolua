@@ -7,7 +7,7 @@ local http = require 'coro-http'
 local lastword, lastcount = '', 0
 local wordlist = {}
 
-pcall(dofile './config.lua') or loadstring(os.getenv 'SHIRITOLUA_CONFIG')()
+dofile './config.lua'
 
 client:on('ready', function()
 	print(client.user.username)

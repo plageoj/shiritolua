@@ -4,10 +4,13 @@ local client = discordia.Client()
 local json = require 'json'
 local http = require 'coro-http'
 
-local lastword, lastcount = '', 0
-local wordlist = {}
+local lastword, wordlist = '', {}
 
-dofile './config.lua'
+local comboLtr, comboLng = { times = 0, letter = '' }, { times = 0, length = 0 }
+local shibariLtrEndTime, shibariLngEndTime = 0, 0
+
+local config = require './config.lua'
+local ut = require './utils.lua'
 
 if os.getenv 'USER' == '' then
 	http.createServer('0.0.0.0', os.getenv 'PORT' + 0)
@@ -17,71 +20,73 @@ client:on('ready', function()
 	print(client.user.username)
 end)
 
-local function yomiOf(kanji)
-	local res, body = http.request(
-		'POST',
-		'https://labs.goo.ne.jp/api/hiragana',
-		{
-			{ 'Content-Type', 'application/json' }
-		},
-		json.encode {
-			app_id = config.yomiApiId,
-			sentence = kanji,
-			output_type = 'hiragana'
-		}
-	)
-	local hiragana = json.decode(body)
-	return hiragana.converted
-end
-
 client:on('messageCreate', function(message)
-	local outOfKaya = true
-	for i, str in ipairs(config.reactChannels) do
-		if '<#'..str..'>' == message.channel.mentionString then
-			outOfKaya = false
-			break
-		end
-	end
+	local minutes = 60
+	local outOfKaya = not ut:includes(config.reactChannels, function(itm)
+		return '<#'..itm..'>' == message.channel.mentionString
+	end)
 	if outOfKaya or message.author.bot then
 		return
 	end
 
-	local hiragana, words = yomiOf(message.content):gsub('[!-~]', ''):gsub(' ','')
-	local processed = hiragana:gsub('ー', '')
-	local count = -3
+	local hiragana, words, processed, suffix, yomilen = ut:process(message.content)
+	local prefix = processed:sub(1, #lastword)
 
-	for i, str in ipairs {'ゃ', 'ゅ', 'ょ', 'っ', 'ぁ', 'ぃ', 'ぅ', 'ぇ', 'ぉ'} do
-		if processed:find(str, -3) then
-			count = -6
-			break
-		end
-	end
 	if words >= config.maxwords then
 		message.channel:send '長すぎです。'
-	else
-		if lastcount == 0 or lastword == processed:sub(1, -lastcount) then
-			if #wordlist == 0 then
-				print(message.channel.messages.find(function(msg)
-					return msg.content == message.content
-				end))
-			end
-			for i, str in ipairs(wordlist) do
-				if str == hiragana then
-					message.channel:send '残念、もう出てます。'
-					return
-				end
-			end
-			table.insert(wordlist, hiragana)
-			if #wordlist > config.historyLength then
-				table.remove(wordlist, 1)
-			end
-
-			lastword, lastcount = processed:sub(count), count
-			message.channel:send(hiragana..' ['..lastword..']')
-		else
-			message.channel:send(hiragana..'。['..lastword..'] から始めてくださいよ。')
-		end
+		return
 	end
+
+	if #lastword ~= 0 and lastword ~= prefix then
+		message.channel:send(hiragana..'。['..lastword..'] から始めてくださいよ。')
+		return
+	end
+
+	if shibariLtrEndTime > os.time() and prefix ~= suffix then
+		message.channel:send(comboLtr.letter..'縛り持続中！あと'..tostring(math.ceil((shibariLtrEndTime - os.time()) / minutes))..'分')
+		return
+	end
+	if shibariLngEndTime > os.time() and comboLng.length ~= yomilen then
+		message.channel:send(tostring(comboLng.length / 3)..'文字縛り持続中！あと'..tostring(math.ceil((shibariLngEndTime - os.time()) / minutes))..'分')
+		return
+	end
+
+	if ut:includes(wordlist, hiragana) then
+		message.channel:send '残念、もう出てます。'
+		return
+	end
+	table.insert(wordlist, hiragana)
+	if #wordlist > config.historyLength then
+		table.remove(wordlist, 1)
+	end
+
+	lastword = suffix
+
+	if comboLtr.letter == suffix then
+		comboLtr.times = comboLtr.times + 1
+		suffix = suffix .. ' (' .. tostring(comboLtr.times + 1) .. ')'
+
+		if comboLtr.times == config.shibariThreshold and shibariLngEndTime <= os.time() then
+			shibariLtrEndTime = os.time() + config.shibariLasts * minutes
+			message.channel:send(lastword..'縛り発動！あと'..tostring(config.shibariLasts)..'分')
+		end
+	else
+		comboLtr.times, comboLtr.letter = 0, suffix
+	end
+
+	if comboLng.length == yomilen then
+		comboLng.times = comboLng.times + 1
+		hiragana = hiragana .. ' = ' .. tostring(yomilen / 3)
+
+		if comboLng.times == config.shibariThreshold and shibariLtrEndTime <= os.time() then
+			shibariLngEndTime = os.time() + config.shibariLasts * minutes
+			message.channel:send(tostring(yomilen / 3)..'文字縛り発動！あと'..tostring(config.shibariLasts)..'分')
+		end
+	else
+		comboLng.times, comboLng.length = 0, yomilen
+	end
+
+	message.channel:send(hiragana..' ['..suffix..']')
 end)
 
 client:run('Bot ' .. config.discordBotToken)

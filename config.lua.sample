@@ -1,8 +1,11 @@
-config = {
+return {
     yomiApiId = '',
     discordBotToken = '',
     reactChannels = {
+        ''
     },
     maxwords = 1,
-    historyLength = 200
+    historyLength = 200,
+    shibariThreshold = 3,
+    shibariLasts = 10
 }

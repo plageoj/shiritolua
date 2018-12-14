@@ -15,19 +15,26 @@ function _M:includes(obj, fn)
 end
 
 function _M:yomiOf(kanji)
-	local res, body = http.request(
-		'POST',
-		'https://labs.goo.ne.jp/api/hiragana',
-		{
-			{ 'Content-Type', 'application/json' }
-		},
-		json.encode {
-			app_id = config.yomiApiId,
-			sentence = kanji,
-			output_type = 'hiragana'
-		}
-	)
-	local hiragana = json.decode(body)
+	while true do
+		local res, body = http.request(
+			'POST',
+			'https://labs.goo.ne.jp/api/hiragana',
+			{
+				{ 'Content-Type', 'application/json' }
+			},
+			json.encode {
+				app_id = config.yomiApiId,
+				sentence = kanji,
+				output_type = 'hiragana'
+			}
+		)
+		local hiragana = json.decode(body)
+		if type(hiragana.converted) ~= 'string' then
+			rt.sleep(2)
+		else
+			break
+		end
+	end
 	return hiragana.converted
 end
 
@@ -63,7 +70,7 @@ function _M:process(kanji)
 		yomiLen = yomiLen - occurrences
 	end
 
-	print(kanji, hiragana, processed, yomilen)
+	print(kanji, hiragana, processed, yomiLen)
 
 	return hiragana, words, processed, processed:sub(count), math.floor(yomiLen / 3)
 end

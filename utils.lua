@@ -15,6 +15,7 @@ function _M:includes(obj, fn)
 end
 
 function _M:yomiOf(kanji)
+	local hiragana
 	while true do
 		local res, body = http.request(
 			'POST',
@@ -28,7 +29,7 @@ function _M:yomiOf(kanji)
 				output_type = 'hiragana'
 			}
 		)
-		local hiragana = json.decode(body)
+		hiragana = json.decode(body)
 		if type(hiragana.converted) ~= 'string' then
 			rt.sleep(2)
 		else

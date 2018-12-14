@@ -9,7 +9,9 @@ local wordlist = {}
 
 dofile './config.lua'
 
-http.createServer('0.0.0.0', os.getenv 'PORT' + 0)
+if os.getenv 'USER' == '' then
+	http.createServer('0.0.0.0', os.getenv 'PORT' + 0)
+end
 
 client:on('ready', function()
 	print(client.user.username)
@@ -58,6 +60,11 @@ client:on('messageCreate', function(message)
 		message.channel:send '長すぎです。'
 	else
 		if lastcount == 0 or lastword == processed:sub(1, -lastcount) then
+			if #wordlist == 0 then
+				print(message.channel.messages.find(function(msg)
+					return msg.content == message.content
+				end))
+			end
 			for i, str in ipairs(wordlist) do
 				if str == hiragana then
 					message.channel:send '残念、もう出てます。'

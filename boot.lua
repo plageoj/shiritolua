@@ -21,7 +21,7 @@ local function yomiOf(kanji)
 			{ 'Content-Type', 'application/json' }
 		},
 		json.encode {
-			app_id = yomiApiId,
+			app_id = config.yomiApiId,
 			sentence = kanji,
 			output_type = 'hiragana'
 		}
@@ -32,7 +32,7 @@ end
 
 client:on('messageCreate', function(message)
 	local outOfKaya = true
-	for i, str in ipairs(reactChannels) do
+	for i, str in ipairs(config.reactChannels) do
 		if '<#'..str..'>' == message.channel.mentionString then
 			outOfKaya = false
 			break
@@ -52,7 +52,7 @@ client:on('messageCreate', function(message)
 			break
 		end
 	end
-	if words > 1 then
+	if words >= config.maxwords then
 		message.channel:send '長すぎです。'
 	else
 		if lastcount == 0 or lastword == processed:sub(1, -lastcount) then
@@ -63,7 +63,7 @@ client:on('messageCreate', function(message)
 				end
 			end
 			table.insert(wordlist, hiragana)
-			if #wordlist > 100 then
+			if #wordlist > config.historyLength then
 				table.remove(wordlist, 1)
 			end
 
@@ -75,4 +75,4 @@ client:on('messageCreate', function(message)
 	end
 end)
 
-client:run('Bot ' .. discordBotToken)
+client:run('Bot ' .. config.discordBotToken)

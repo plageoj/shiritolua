@@ -1,3 +1,8 @@
-yomiApiId = ''
-discordBotToken = ''
-reactChannels = {''}
+config = {
+    yomiApiId = '',
+    discordBotToken = '',
+    reactChannels = {
+    },
+    maxwords = 1,
+    historyLength = 200
+}

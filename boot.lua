@@ -77,11 +77,11 @@ client:on('messageCreate', function(message)
 
 	if comboLng.length == yomilen then
 		comboLng.times = comboLng.times + 1
-		hiragana = hiragana .. ' = ' .. tostring(yomilen / 3)
+		hiragana = hiragana .. ' = ' .. tostring(yomilen)
 
 		if comboLng.times == config.shibariThreshold and shibariLtrEndTime <= os.time() then
 			shibariLngEndTime = os.time() + config.shibariLasts * minutes
-			message.channel:send(tostring(yomilen / 3)..'文字縛り発動！あと'..tostring(config.shibariLasts)..'分')
+			message.channel:send(tostring(yomilen)..'文字縛り発動！あと'..tostring(config.shibariLasts)..'分')
 		end
 	else
 		comboLng.times, comboLng.length = 0, yomilen

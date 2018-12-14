@@ -54,7 +54,7 @@ function _M:process(kanji)
 		yomiLen = yomiLen - occurrences
 	end
 
-	return hiragana, words, processed, processed:sub(count), yomiLen
+	return hiragana, words, processed, processed:sub(count), math.floor(yomiLen / 3)
 end
 
 return _M

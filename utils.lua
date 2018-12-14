@@ -32,7 +32,17 @@ function _M:yomiOf(kanji)
 end
 
 function _M:process(kanji)
-	local hiragana, words = self:yomiOf(kanji):gsub('[!-~]', ''):gsub(' ','')
+	local hiragana, words = self:yomiOf(kanji)
+	local hiraganar = {
+		'[!-~]', ' ', '「', '」', '！', '？', '｛', '｝', '＿', '＊', '％',
+		'。', '、', '｜', '＝', '＜', '＞', '＾', '～', '￥','＋', '・', '；',
+		'：', '…', '‥'
+	}
+
+	for i, str in ipairs(hiraganar) do
+		hiragana = hiragana:gsub(str, '')
+	end
+
 	local processed = hiragana:gsub('ー', '')
 	local count = -3
 	local yomiLen = #hiragana

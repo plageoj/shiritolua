@@ -1,11 +1,24 @@
 return {
+    -- Goo API アプリケーション ID
     yomiApiId = '',
+
+    -- Discord トークン、Bot ページより取得
     discordBotToken = '',
+
+    -- 反応するチャンネル ID
     reactChannels = {
         ''
     },
+
+    -- 制限文節数
     maxwords = 1,
+
+    -- 履歴最大件数
     historyLength = 200,
+
+    -- この件数を超えると縛りスタート
     shibariThreshold = 3,
+
+    -- 縛り継続分数
     shibariLasts = 10
 }

@@ -14,7 +14,9 @@ local ut = require './utils.lua'
 
 if not os.getenv 'USER' then
 	print 'Starting server'
-	http.createServer('0.0.0.0', os.getenv 'PORT' + 0)
+	http.createServer('0.0.0.0', os.getenv 'PORT' + 0, function(head, body)
+		return head, body
+	end)
 end
 
 client:on('ready', function()

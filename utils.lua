@@ -53,12 +53,12 @@ function _M:process(kanji)
 
 	local processed = hiragana:gsub('ー', '')
 	local count = -3
-	local yomiLen = #hiragana
+	local yomiLen = math.floor(#hiragana / 3)
 	local smallLtr = {'ゃ', 'ゅ', 'ょ', 'っ', 'ぁ', 'ぃ', 'ぅ', 'ぇ', 'ぉ'}
 
 	if
 		self:includes(smallLtr,	function(itm)
-			return processed:find(itm, -3) ~= nil
+			return processed:find(itm, -5) ~= nil
 		end)
 	then
 		count = -6
@@ -73,7 +73,7 @@ function _M:process(kanji)
 
 	print(kanji, hiragana, processed, yomiLen)
 
-	return hiragana, words, processed, processed:sub(count), math.floor(yomiLen / 3)
+	return hiragana, words, processed, processed:sub(count), yomiLen
 end
 
 return _M

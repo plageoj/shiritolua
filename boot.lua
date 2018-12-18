@@ -1,9 +1,6 @@
 local discordia = require 'discordia'
 local client = discordia.Client()
 
-local json = require 'json'
-local http = require 'coro-http'
-
 local lastword, wordlist = '', {}
 
 local comboLtr, comboLng = { times = 0, letter = '' }, { times = 0, length = 0 }
@@ -11,13 +8,7 @@ local shibariLtrEndTime, shibariLngEndTime = 0, 0
 
 local config = require './config.lua'
 local ut = require './utils.lua'
-
-if not os.getenv 'USER' then
-	print 'Starting server'
-	http.createServer('0.0.0.0', os.getenv 'PORT' + 0, function(head, body)
-		return head, body
-	end)
-end
+require './server.lua'
 
 client:on('ready', function()
 	print(client.user.username .. ' is ready!')

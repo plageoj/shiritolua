@@ -5,23 +5,32 @@ local config = require './config.lua'
 
 local _M = {}
 
-function _M:includes(obj, fn)
-	for i, itm in ipairs(obj) do
-		if ( type(fn) == 'function' and fn(itm) ) or ( itm == fn) then
+--- obj の中に fn に一致するものがあるかどうか調べる
+-- @param obj テーブル
+-- @param fn チェック関数
+-- @param fn 比較対象
+-- @return 見つかれば true、見つからなければ false
+function _M.includes(obj, fn)
+	for _, itm in ipairs(obj) do
+		if (type(fn) == 'function' and fn(itm)) or (itm == fn) then
 			return true
 		end
-		return false
 	end
+	return false
 end
 
-function _M:yomiOf(kanji)
+--- 文字列のよみを取得する
+-- @param kanji 文字列
+-- @return よみ
+function _M.yomiOf(kanji)
 	local hiragana
 	while true do
-		local res, body = http.request(
+		local _, body =
+			http.request(
 			'POST',
 			'https://labs.goo.ne.jp/api/hiragana',
 			{
-				{ 'Content-Type', 'application/json' }
+				{'Content-Type', 'application/json'}
 			},
 			json.encode {
 				app_id = config.yomiApiId,
@@ -30,6 +39,8 @@ function _M:yomiOf(kanji)
 			}
 		)
 		hiragana = json.decode(body)
+
+		-- API からレスポンスがなければ、2秒待って再試行する
 		if type(hiragana.converted) ~= 'string' then
 			rt.sleep(2)
 		else
@@ -39,15 +50,48 @@ function _M:yomiOf(kanji)
 	return hiragana.converted
 end
 
-function _M:process(kanji)
-	local hiragana, words = self:yomiOf(kanji):gsub(' ', '')
+--- 文字列をよみに変換し、しりとりで使用できるように処理する
+-- @param kanji 入力文字列
+-- @return よみ
+-- @return 文節数 - 1
+-- @return しりとり処理用文字列
+-- @return 最後の音
+-- @return よみの音数
+function _M.process(kanji)
+	local hiragana, words = _M.yomiOf(kanji):gsub(' ', '')
 	local hiraganar = {
-		'[!-~]', '「', '」', '！', '？', '｛', '｝', '＿', '＊', '％',
-		'。', '、', '｜', '＝', '＜', '＞', '＾', '～', '￥','＋', '・', '；',
-		'：', '…', '‥', '（', '）', '’'
+		'[!-~]',
+		'「',
+		'」',
+		'！',
+		'？',
+		'｛',
+		'｝',
+		'＿',
+		'＊',
+		'％',
+		'。',
+		'、',
+		'｜',
+		'＝',
+		'＜',
+		'＞',
+		'＾',
+		'～',
+		'￥',
+		'＋',
+		'・',
+		'；',
+		'：',
+		'…',
+		'‥',
+		'（',
+		'）',
+		'’'
 	}
 
-	for i, str in ipairs(hiraganar) do
+	-- 記号を除く
+	for _, str in ipairs(hiraganar) do
 		hiragana = hiragana:gsub(str, '')
 	end
 
@@ -56,17 +100,23 @@ function _M:process(kanji)
 	local yomiLen = math.floor(#hiragana / 3)
 	local smallLtr = {'ゃ', 'ゅ', 'ょ', 'っ', 'ぁ', 'ぃ', 'ぅ', 'ぇ', 'ぉ'}
 
+	-- 最終音は何バイトか？
 	if
-		self:includes(smallLtr,	function(itm)
-			return processed:find(itm, -5) ~= nil
-		end)
-	then
+		_M.includes(
+			smallLtr,
+			function(itm)
+				return processed:find(itm, -5) ~= nil
+			end
+		)
+	 then
 		count = -6
 	end
 
+	-- 「っ」は1音としてカウントする
 	table.remove(smallLtr, 4)
 
-	for i, ltr in ipairs(smallLtr) do
+	-- 「っ」以外は0音としてカウントする
+	for _, ltr in ipairs(smallLtr) do
 		local _, occurrences = hiragana:gsub(ltr, '')
 		yomiLen = yomiLen - occurrences
 	end

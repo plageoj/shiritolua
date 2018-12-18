@@ -3,83 +3,102 @@ local client = discordia.Client()
 
 local lastword, wordlist = '', {}
 
-local comboLtr, comboLng = { times = 0, letter = '' }, { times = 0, length = 0 }
+local comboLtr, comboLng = {times = 0, letter = ''}, {times = 0, length = 0}
 local shibariLtrEndTime, shibariLngEndTime = 0, 0
 
 local config = require './config.lua'
 local ut = require './utils.lua'
-require './server.lua'
 
-client:on('ready', function()
-	print(client.user.username .. ' is ready!')
-end)
+client:on(
+	'messageCreate',
+	function(message)
+		local minutes = 60
 
-client:on('messageCreate', function(message)
-	local minutes = 60
-	local outOfKaya = not ut:includes(config.reactChannels, function(itm)
-		return '<#'..itm..'>' == message.channel.mentionString
-	end)
-	if outOfKaya or message.author.bot then
-		return
-	end
-
-	local hiragana, words, processed, suffix, yomilen = ut:process(message.content)
-	local prefix = processed:sub(1, #lastword)
-
-	if words >= config.maxwords then
-		message.channel:send '長すぎです。'
-		return
-	end
-
-	if #lastword ~= 0 and lastword ~= prefix then
-		message.channel:send(hiragana..'。['..lastword..'] から始めてくださいよ。')
-		return
-	end
-
-	if shibariLtrEndTime > os.time() and prefix ~= suffix then
-		message.channel:send('['..comboLtr.letter..'] 縛り持続中！残'..tostring(math.ceil((shibariLtrEndTime - os.time()) / minutes))..'分')
-		return
-	end
-	if shibariLngEndTime > os.time() and comboLng.length ~= yomilen then
-		message.channel:send(tostring(comboLng.length)..'音縛り持続中！'..hiragana..'は'..tostring(yomilen)..'音です。残'..tostring(math.ceil((shibariLngEndTime - os.time()) / minutes))..'分')
-		return
-	end
-
-	if ut:includes(wordlist, hiragana) then
-		message.channel:send '残念、もう出てます。'
-		return
-	end
-	table.insert(wordlist, hiragana)
-	if #wordlist > config.historyLength then
-		table.remove(wordlist, 1)
-	end
-
-	lastword = suffix
-
-	if comboLtr.letter == suffix then
-		comboLtr.times = comboLtr.times + 1
-		suffix = suffix .. ' (' .. tostring(comboLtr.times + 1) .. ')'
-
-		if comboLtr.times == config.shibariThreshold and shibariLngEndTime <= os.time() then
-			shibariLtrEndTime = os.time() + config.shibariLasts * minutes
-			message.channel:send('['..lastword..'] 縛り発動！残'..tostring(config.shibariLasts)..'分')
+		-- 対象チャンネルでなければ、さよなら
+		local outOfKaya =
+			not ut.includes(
+			config.reactChannels,
+			function(itm)
+				return '<#' .. itm .. '>' == message.channel.mentionString
+			end
+		)
+		if outOfKaya or message.author.bot then
+			return
 		end
-	else
-		comboLtr.times, comboLtr.letter = 0, suffix
-	end
 
-	if comboLng.length == yomilen then
-		comboLng.times = comboLng.times + 1
+		local hiragana, words, processed, suffix, yomilen = ut.process(message.content)
+		local prefix = processed:sub(1, #lastword)
 
-		if comboLng.times == config.shibariThreshold and shibariLtrEndTime <= os.time() then
-			shibariLngEndTime = os.time() + config.shibariLasts * minutes
-			message.channel:send(tostring(yomilen)..'音縛り発動！残'..tostring(config.shibariLasts)..'分')
+		-- 文節数が多いのはダメ
+		if words >= config.maxwords then
+			message.channel:send '長すぎです。'
+			return
 		end
-	else
-		comboLng.times, comboLng.length = 0, yomilen
-	end
 
-	message.channel:send(hiragana.. ' = ' .. tostring(yomilen)..'音 ['..suffix..']')
-end)
+		-- しりとりになっていなければダメ
+		if #lastword ~= 0 and lastword ~= prefix then
+			message.channel:send(hiragana .. '。[' .. lastword .. '] から始めてくださいよ。')
+			return
+		end
+
+		-- 文字縛り継続中なら、縛り条件に合致していないとダメ
+		if shibariLtrEndTime > os.time() and prefix ~= suffix then
+			message.channel:send(
+				'[' .. comboLtr.letter .. '] 縛り持続中！残' .. tostring(math.ceil((shibariLtrEndTime - os.time()) / minutes)) .. '分'
+			)
+			return
+		end
+		-- 音数縛り
+		if shibariLngEndTime > os.time() and comboLng.length ~= yomilen then
+			message.channel:send(
+				tostring(comboLng.length) ..
+					'音縛り持続中！' ..
+						hiragana ..
+							'は' .. tostring(yomilen) .. '音です。残' .. tostring(math.ceil((shibariLngEndTime - os.time()) / minutes)) .. '分'
+			)
+			return
+		end
+
+		-- 既出語はダメ
+		if ut.includes(wordlist, hiragana) then
+			message.channel:send '残念、もう出てます。'
+			return
+		end
+		table.insert(wordlist, hiragana)
+		if #wordlist > config.historyLength then
+			table.remove(wordlist, 1)
+		end
+
+		lastword = suffix
+
+		-- 文字コンボ判定
+		if comboLtr.letter == suffix then
+			comboLtr.times = comboLtr.times + 1
+			suffix = suffix .. ' (' .. tostring(comboLtr.times + 1) .. ')'
+
+			if comboLtr.times == config.shibariThreshold and shibariLngEndTime <= os.time() then
+				shibariLtrEndTime = os.time() + config.shibariLasts * minutes
+				message.channel:send('[' .. lastword .. '] 縛り発動！残' .. tostring(config.shibariLasts) .. '分')
+			end
+		else
+			comboLtr.times, comboLtr.letter = 0, suffix
+		end
+
+		-- 音数コンボ判定
+		if comboLng.length == yomilen then
+			comboLng.times = comboLng.times + 1
+
+			if comboLng.times == config.shibariThreshold and shibariLtrEndTime <= os.time() then
+				shibariLngEndTime = os.time() + config.shibariLasts * minutes
+				message.channel:send(tostring(yomilen) .. '音縛り発動！残' .. tostring(config.shibariLasts) .. '分')
+			end
+		else
+			comboLng.times, comboLng.length = 0, yomilen
+		end
+
+		-- 無事受理されました
+		message.channel:send(hiragana .. ' = ' .. tostring(yomilen) .. '音 [' .. suffix .. ']')
+	end
+)
 
 client:run('Bot ' .. config.discordBotToken)

@@ -13,6 +13,7 @@ client:on(
 	'messageCreate',
 	function(message)
 		local minutes = 60
+		local content = message.content:gsub('[0-9!-~]', '')
 
 		-- 対象チャンネルでなければ、さよなら
 		local outOfKaya =
@@ -22,11 +23,14 @@ client:on(
 				return '<#' .. itm .. '>' == message.channel.mentionString
 			end
 		)
-		if outOfKaya or message.author.bot then
+		-- Bot の発言と空メッセージはさよなら
+		if outOfKaya or message.author.bot or #content == 0 or #message.mentionedUsers ~= 0 or #message.mentionedChannels then
 			return
 		end
 
-		local hiragana, words, processed, suffix, yomilen = ut.process(message.content)
+		message.channel:broadcastTyping()
+
+		local hiragana, words, processed, suffix, yomilen = ut.process(content)
 		local prefix = processed:sub(1, #lastword)
 
 		-- 文節数が多いのはダメ
@@ -41,7 +45,7 @@ client:on(
 			return
 		end
 
-		-- 文字縛り継続中なら、縛り条件に合致していないとダメ
+		-- 文字縛り
 		if shibariLtrEndTime > os.time() and prefix ~= suffix then
 			message.channel:send(
 				'[' .. comboLtr.letter .. '] 縛り持続中！残' .. tostring(math.ceil((shibariLtrEndTime - os.time()) / minutes)) .. '分'
@@ -97,7 +101,8 @@ client:on(
 		end
 
 		-- 無事受理されました
-		message.channel:send(hiragana .. ' = ' .. tostring(yomilen) .. '音 [' .. suffix .. ']')
+		local msg = message.channel:send(hiragana .. ' = ' .. tostring(yomilen) .. '音 [' .. suffix .. ']')
+		print(msg)
 	end
 )
 

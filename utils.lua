@@ -60,7 +60,6 @@ end
 function _M.process(kanji)
 	local hiragana, words = _M.yomiOf(kanji):gsub(' ', '')
 	local hiraganar = {
-		'[!-~]',
 		'「',
 		'」',
 		'！',

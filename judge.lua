@@ -86,16 +86,31 @@ local function inDic(dic, string)
         }
     )
     if body:match '<TotalHitCount>(%d*)</TotalHitCount>' ~= '0' then
-        print(dic)
-        return true
+        _, body =
+            http.request(
+            'GET',
+            buildGetUrl(
+                'http://public.dejizo.jp/NetDicV09.asmx/GetDicItemLite',
+                {
+                    Dic = dic,
+                    Item = body:match '<ItemID>(%d*)</ItemID>',
+                    Loc = '',
+                    Prof = 'XHTML'
+                }
+            ),
+            {
+                {'content-type', 'text/xml'}
+            }
+        )
+        return body:match '<Body>.*</Body>':gsub('<[^>]*>', ''):gsub('。.*', '')
     else
         return false
     end
 end
 
 function _M.process(kanji)
-    -- 辞書になかったら諦める
-    if not (inDic('EdictJE', kanji) or inDic('wpedia', kanji) or inDic('EJdict', kanji)) then
+    local dicres = inDic('EdictJE', kanji) or inDic('wpedia', kanji) or inDic('EJdict', kanji)
+    if dicres == false then
         return false
     end
     local hiragana = yomiOf(kanji)
@@ -112,7 +127,7 @@ function _M.process(kanji)
     end
     local resh = ''
     for i = 1, #hiragana do
-        local mt = hiragana:sub(i, i + 2):match('\xe3[\x81-\x83][\x80-\xbf]')
+        local mt = hiragana:sub(i, i + 2):match '\xe3[\x81-\x83][\x80-\xbf]'
         if mt then
             resh = resh .. mt
         end
@@ -144,11 +159,11 @@ function _M.process(kanji)
 
     print(kanji, hiragana, processed, yomiLen)
 
-    return resh, processed, processed:sub(count), yomiLen
+    return resh, processed, processed:sub(count), yomiLen, dicres
 end
 
 function _M.judge(content)
-    local hiragana, processed, suffix, yomilen = _M.process(content)
+    local hiragana, processed, suffix, yomilen, unchik = _M.process(content)
     if hiragana == false then
         return '我輩の辞書に「' .. content .. '」はありません。[' .. lastword .. ']'
     end
@@ -221,7 +236,7 @@ function _M.judge(content)
     end
 
     -- 無事受理されました
-    return ret .. hiragana .. ' [' .. suffix .. ']'
+    return ret .. hiragana .. ' [' .. suffix .. ']', unchik
 end
 
 return _M

@@ -44,13 +44,14 @@ client:on(
 
 		message.channel:broadcastTyping()
 
-		local reply = judge.judge(content)
+		local reply, unchik = judge.judge(content)
 
 		if reply then
 			if msg then
 				msg:delete()
 			end
 			msg = message:reply(reply)
+			message:reply(unchik)
 		end
 	end
 )

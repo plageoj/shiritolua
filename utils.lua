@@ -50,7 +50,7 @@ function _M.yomiOf(kanji)
 	return hiragana.converted
 end
 
-local function encode(string)
+function _M.encode(string)
 	local ret = ''
 	string = tostring(string)
 	for i = 1, #string do
@@ -70,7 +70,7 @@ local function buildGetUrl(url, query)
 	end
 	url = url .. '?'
 	for key, val in pairs(query) do
-		url = url .. '&' .. key .. '=' .. encode(val)
+		url = url .. '&' .. key .. '=' .. _M.encode(val)
 	end
 	return url:gsub('?&', '?')
 end
@@ -112,8 +112,9 @@ end
 -- @return よみの音数
 function _M.process(kanji)
 	local dicHits = inDic('EdictJE', kanji) or inDic('wpedia', kanji) or inDic('EJdict', kanji)
+	-- 辞書になかったら諦める
 	if dicHits == false then
-		return dicHits
+		return false
 	end
 	local hiragana, words = _M.yomiOf(kanji):gsub(' ', '')
 	local hiraganar = {

@@ -9,14 +9,22 @@ local shibariLtrEndTime, shibariLngEndTime = 0, 0
 local config = require './config.lua'
 local ut = require './utils.lua'
 
-client:on('ready', function()
-	print('Listening to '..config.reactChannels[1])
-end)
+client:on(
+	'ready',
+	function()
+		print('Listening to ' .. config.reactChannels[1])
+	end
+)
 
 client:on(
 	'messageCreate',
 	function(message)
 		local minutes = 60
+		-- 絵文字が入ってたら論外
+		if ut.encode(message.content):match('%%F0%%') then
+			return message.channel:send '絵文字はわかりません。ごめんなさい'
+		end
+
 		-- 数字はダメ、コメントも反応しない
 		local content = message.content:gsub('[0-9]', ''):gsub('//.*', '')
 
@@ -37,46 +45,40 @@ client:on(
 
 		local hiragana, words, processed, suffix, yomilen = ut.process(content)
 		if hiragana == false then
-			message.channel:send('我輩の辞書に「'..content..'」はありません。')
-			return
+			return message.channel:send('我輩の辞書に「' .. content .. '」はありません。')
 		end
 
 		local prefix = processed:sub(1, #lastword)
 
 		-- やっぱり ん もなしにしよう
 		if suffix == 'ん' then
-			message.channel:send 'んで終わっています。'
-			return
+			return message.channel:send 'んで終わっています。'
 		end
 
 		-- しりとりになっていなければダメ
 		if #lastword ~= 0 and lastword ~= prefix then
-			message.channel:send(hiragana .. '。[' .. lastword .. '] から始めてくださいよ。')
-			return
+			return message.channel:send(hiragana .. '。[' .. lastword .. '] から始めてくださいよ。')
 		end
 
 		-- 文字縛り
 		if shibariLtrEndTime > os.time() and prefix ~= suffix and comboLtr.times < config.shibaredMessages then
-			message.channel:send(
+			return message.channel:send(
 				'[' .. comboLtr.letter .. '] 縛り持続中！残' .. tostring(math.ceil((shibariLtrEndTime - os.time()) / minutes)) .. '分'
 			)
-			return
 		end
 		-- 音数縛り
 		if shibariLngEndTime > os.time() and comboLng.length ~= yomilen and comboLng.times < config.shibaredMessages then
-			message.channel:send(
+			return message.channel:send(
 				tostring(comboLng.length) ..
 					'音縛り持続中！' ..
 						hiragana ..
 							'は' .. tostring(yomilen) .. '音。残' .. tostring(math.ceil((shibariLngEndTime - os.time()) / minutes)) .. '分'
 			)
-			return
 		end
 
 		-- 既出語はダメ
 		if ut.includes(wordlist, hiragana) then
-			message.channel:send '残念、もう出てます。'
-			return
+			return message.channel:send '残念、もう出てます。'
 		end
 		table.insert(wordlist, hiragana)
 		if #wordlist > config.historyLength then
@@ -111,7 +113,7 @@ client:on(
 		end
 
 		-- 無事受理されました
-		local msg = message.channel:send(hiragana .. ' = ' .. tostring(yomilen) .. '音 [' .. suffix .. ']')
+		message.channel:send(hiragana .. ' = ' .. tostring(yomilen) .. '音 [' .. suffix .. ']')
 	end
 )
 

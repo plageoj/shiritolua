@@ -9,6 +9,10 @@ local shibariLtrEndTime, shibariLngEndTime = 0, 0
 local config = require './config.lua'
 local ut = require './utils.lua'
 
+client:on('ready', function()
+	print('Listening to '..config.reactChannels[1])
+end)
+
 client:on(
 	'messageCreate',
 	function(message)
@@ -24,7 +28,7 @@ client:on(
 			end
 		)
 		-- Bot の発言と空メッセージはさよなら
-		if outOfKaya or message.author.bot or #content == 0 or #message.mentionedUsers ~= 0 or #message.mentionedChannels then
+		if outOfKaya or message.author.bot or #content == 0 or #message.mentionedUsers ~= 0 or #message.mentionedChannels ~= 0 then
 			return
 		end
 

@@ -119,10 +119,9 @@ function _M.process(kanji)
 	local hiragana, words = _M.yomiOf(kanji):gsub(' ', '')
 	local hiraganar = {
 		'[!-~]',
-		'[^\xe3][^\x81-\x83][^\x80-\xbf]', -- 平仮名とカタカナ以外
 		'\xe3\x82[\x97-\x9f]', -- 平仮名特殊記号 ゛ など
 		'・',
-		'\xe3\x83[\xbd-\xbf]', -- カタカナ特殊記号
+		'\xe3\x83[\xbd-\xbf]' -- カタカナ特殊記号
 		-- TODO: 2バイト文字の処理をやってないけど、とりあえずエラーにはならないのでよしとする
 	}
 
@@ -130,10 +129,17 @@ function _M.process(kanji)
 	for _, str in ipairs(hiraganar) do
 		hiragana = hiragana:gsub(str, '')
 	end
+	local resh = ''
+	for i = 1, #hiragana do
+		local mt = hiragana:sub(i, i + 2):match('\xe3[\x81-\x83][\x80-\xbf]')
+		if mt then
+			resh = resh .. mt
+		end
+	end
 
-	local processed = hiragana:gsub('ー', '')
+	local processed = resh:gsub('ー', '')
 	local count = -3
-	local yomiLen = math.floor(#hiragana / 3)
+	local yomiLen = math.floor(#resh / 3)
 	local smallLtr = {'ゃ', 'ゅ', 'ょ', 'っ', 'ぁ', 'ぃ', 'ぅ', 'ぇ', 'ぉ'}
 
 	-- 最終音は何バイトか？
@@ -153,13 +159,13 @@ function _M.process(kanji)
 
 	-- 「っ」以外は0音としてカウントする
 	for _, ltr in ipairs(smallLtr) do
-		local _, occurrences = hiragana:gsub(ltr, '')
+		local _, occurrences = resh:gsub(ltr, '')
 		yomiLen = yomiLen - occurrences
 	end
 
 	print(kanji, hiragana, processed, yomiLen)
 
-	return hiragana, words, processed, processed:sub(count), yomiLen
+	return resh, words, processed, processed:sub(count), yomiLen
 end
 
 return _M

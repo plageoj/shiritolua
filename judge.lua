@@ -102,7 +102,7 @@ local function inDic(dic, string)
                 {'content-type', 'text/xml'}
             }
         )
-        return body:match '<Body>.*</Body>':gsub('<[^>]*>', ''):gsub('。.*', '')
+        return body:match '<Body>.*</Body>':gsub('<[^>]*>', ''):gsub('\n', ''):gsub('。.*', ''):gsub('；.*', '')
     else
         return false
     end

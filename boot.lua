@@ -17,7 +17,8 @@ client:on(
 	'messageCreate',
 	function(message)
 		local minutes = 60
-		local content = message.content:gsub('[0-9!-~]', '')
+		-- 数字はダメ、コメントも反応しない
+		local content = message.content:gsub('[0-9]', ''):gsub('//.*', '')
 
 		-- 対象チャンネルでなければ、さよなら
 		local outOfKaya =
@@ -35,11 +36,16 @@ client:on(
 		message.channel:broadcastTyping()
 
 		local hiragana, words, processed, suffix, yomilen = ut.process(content)
+		if hiragana == false then
+			message.channel:send('我輩の辞書に'..content..'はありません。')
+			return
+		end
+
 		local prefix = processed:sub(1, #lastword)
 
-		-- 文節数が多いのはダメ
-		if words >= config.maxwords then
-			message.channel:send '長すぎです。'
+		-- やっぱり ん もなしにしよう
+		if suffix == 'ん' then
+			message.channel:send 'んで終わっています。'
 			return
 		end
 
@@ -50,19 +56,19 @@ client:on(
 		end
 
 		-- 文字縛り
-		if shibariLtrEndTime > os.time() and prefix ~= suffix then
+		if shibariLtrEndTime > os.time() and prefix ~= suffix and comboLtr.times < config.shibaredMessages then
 			message.channel:send(
 				'[' .. comboLtr.letter .. '] 縛り持続中！残' .. tostring(math.ceil((shibariLtrEndTime - os.time()) / minutes)) .. '分'
 			)
 			return
 		end
 		-- 音数縛り
-		if shibariLngEndTime > os.time() and comboLng.length ~= yomilen then
+		if shibariLngEndTime > os.time() and comboLng.length ~= yomilen and comboLng.times < config.shibaredMessages then
 			message.channel:send(
 				tostring(comboLng.length) ..
 					'音縛り持続中！' ..
 						hiragana ..
-							'は' .. tostring(yomilen) .. '音です。残' .. tostring(math.ceil((shibariLngEndTime - os.time()) / minutes)) .. '分'
+							'は' .. tostring(yomilen) .. '音。残' .. tostring(math.ceil((shibariLngEndTime - os.time()) / minutes)) .. '分'
 			)
 			return
 		end
@@ -106,7 +112,6 @@ client:on(
 
 		-- 無事受理されました
 		local msg = message.channel:send(hiragana .. ' = ' .. tostring(yomilen) .. '音 [' .. suffix .. ']')
-		print(msg)
 	end
 )
 

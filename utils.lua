@@ -50,6 +50,59 @@ function _M.yomiOf(kanji)
 	return hiragana.converted
 end
 
+local function encode(string)
+	local ret = ''
+	string = tostring(string)
+	for i = 1, #string do
+		local char = string:byte(i)
+		if char > 0x7f then
+			ret = ret .. string.format('%%%X', char)
+		else
+			ret = ret .. string.char(char)
+		end
+	end
+	return ret
+end
+
+local function buildGetUrl(url, query)
+	if not query then
+		return url
+	end
+	url = url .. '?'
+	for key, val in pairs(query) do
+		url = url .. '&' .. key .. '=' .. encode(val)
+	end
+	return url:gsub('?&', '?')
+end
+
+local function inDic(dic, string)
+	local _, body =
+		http.request(
+		'GET',
+		buildGetUrl(
+			'http://public.dejizo.jp/NetDicV09.asmx/SearchDicItemLite',
+			{
+				Word = string,
+				Dic = dic,
+				Scope = 'HEADWORD',
+				Match = 'STARTWITH',
+				Merge = 'AND',
+				Prof = 'XHTML',
+				PageSize = 1,
+				PageIndex = 0
+			}
+		),
+		{
+			{'content-type', 'text/xml'}
+		}
+	)
+	if body:match('<TotalHitCount>(%d*)</TotalHitCount>') + 0 == 0 then
+		return false
+	else
+		return true
+	end
+end
+
 --- 文字列をよみに変換し、しりとりで使用できるように処理する
 -- @param kanji 入力文字列
 -- @return よみ
@@ -58,8 +111,13 @@ end
 -- @return 最後の音
 -- @return よみの音数
 function _M.process(kanji)
+	local dicHits = inDic('EdictJE', kanji) or inDic('wpedia', kanji) or inDic('EJdict', kanji)
+	if dicHits == false then
+		return dicHits
+	end
 	local hiragana, words = _M.yomiOf(kanji):gsub(' ', '')
 	local hiraganar = {
+		'[!-~]',
 		'「',
 		'」',
 		'！',

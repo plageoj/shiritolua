@@ -20,5 +20,8 @@ return {
     shibariThreshold = 3,
 
     -- 縛り継続分数
-    shibariLasts = 10
+    shibariLasts = 3,
+
+    -- 縛り継続メッセージ数
+    shibaredMessages = 5
 }

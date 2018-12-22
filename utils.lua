@@ -119,7 +119,11 @@ function _M.process(kanji)
 	local hiragana, words = _M.yomiOf(kanji):gsub(' ', '')
 	local hiraganar = {
 		'[!-~]',
-		'[^\xe3][^\x81-\x83][^\x80-\xbf]' -- 平仮名とカタカナ以外
+		'[^\xe3][^\x81-\x83][^\x80-\xbf]', -- 平仮名とカタカナ以外
+		'\xe3\x82[\x97-\x9f]', -- 平仮名特殊記号 ゛ など
+		'・',
+		'\xe3\x83[\xbd-\xbf]', -- カタカナ特殊記号
+		-- TODO: 2バイト文字の処理をやってないけど、とりあえずエラーにはならないのでよしとする
 	}
 
 	-- 記号を除く

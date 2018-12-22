@@ -20,6 +20,8 @@ client:on(
 	'messageCreate',
 	function(message)
 		local minutes = 60
+		-- 数字はダメ、コメントも反応しない
+		local content = message.content:gsub('[0-9]', ''):gsub('//.*', '')
 
 		-- 対象チャンネルでなければ、さよなら
 		local outOfKaya =
@@ -36,11 +38,9 @@ client:on(
 
 		-- 絵文字が入ってたら論外
 		if ut.encode(message.content):match('%%F0%%') then
-			return message.channel:send '絵文字はわかりません。ごめんなさい'
+			return
 		end
 
-		-- 数字はダメ、コメントも反応しない
-		local content = message.content:gsub('[0-9]', ''):gsub('//.*', '')
 
 		message.channel:broadcastTyping()
 

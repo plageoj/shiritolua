@@ -96,10 +96,10 @@ local function inDic(dic, string)
 			{'content-type', 'text/xml'}
 		}
 	)
-	if body:match('<TotalHitCount>(%d*)</TotalHitCount>') + 0 == 0 then
-		return false
-	else
+	if body:match('<TotalHitCount>(%d*)</TotalHitCount>') then
 		return true
+	else
+		return false
 	end
 end
 

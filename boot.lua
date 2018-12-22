@@ -37,7 +37,7 @@ client:on(
 
 		local hiragana, words, processed, suffix, yomilen = ut.process(content)
 		if hiragana == false then
-			message.channel:send('我輩の辞書に'..content..'はありません。')
+			message.channel:send('我輩の辞書に「'..content..'」はありません。')
 			return
 		end
 

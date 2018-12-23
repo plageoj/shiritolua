@@ -51,7 +51,9 @@ client:on(
 				msg:delete()
 			end
 			msg = message:reply(reply)
-			message:reply(unchik)
+			if unchik then
+				message:reply(unchik)
+			end
 		end
 	end
 )

@@ -102,15 +102,15 @@ local function inDic(dic, string)
                 {'content-type', 'text/xml'}
             }
         )
-        return body:match '<Body>.*</Body>':gsub('<[^>]*>', ''):gsub(' *\n', ''):gsub('。.*', ''):gsub('；.*', '')
+        return body:match '<Body>.*</Body>':gsub('<[^>]*>', ''):gsub(' *\n', ''):gsub('。.*', ''):gsub('---.*', '')
     else
         return false
     end
 end
 
 function _M.process(kanji)
-    local dicres = inDic('EdictJE', kanji) or inDic('wpedia', kanji) or inDic('EJdict', kanji)
-    if dicres == false then
+    local dicres = inDic('wpedia', kanji)
+    if not (inDic('EdictJE', kanji) or dicres or inDic('EJdict', kanji)) then
         return false
     end
     local hiragana = yomiOf(kanji)

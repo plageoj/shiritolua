@@ -93,7 +93,7 @@ local function inDic(dic, string)
     return body:match '<TotalHitCount>(%d*)</TotalHitCount>' ~= '0'
 end
 
-function _M.seekWiki(title)
+local function seekWiki(title)
     local _, body =
         http.request(
         'GET',
@@ -120,7 +120,7 @@ function _M.seekWiki(title)
 end
 
 function _M.process(kanji)
-    local dicres = inDic('wpedia', kanji)
+    local dicres = seekWiki(kanji)
     if not (inDic('EdictJE', kanji) or dicres or inDic('EJdict', kanji)) then
         return false
     end

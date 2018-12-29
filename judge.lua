@@ -6,13 +6,18 @@ local ut = require './utils.lua'
 
 local _M = {}
 
-local lastword, wordlist = 'り', {}
+local lastword, wordlist = '', {}
 
 local comboLtr, comboLng = {times = 0, letter = ''}, {times = 0, length = 0}
 local shibariLtrEndTime, shibariLngEndTime = 0, 0
 
+function _M.setWord(yomi)
+    lastword = yomi
+end
+
 local function yomiOf(kanji)
     local hiragana
+    local retry = 1
     while true do
         local _, body =
             http.request(
@@ -29,9 +34,9 @@ local function yomiOf(kanji)
         )
         hiragana = json.decode(body)
 
-        -- API からレスポンスがなければ、2秒待って再試行する
         if type(hiragana.converted) ~= 'string' then
-            rt.sleep(2)
+            rt.sleep(retry)
+            retry = retry * 2
         else
             break
         end
@@ -53,18 +58,18 @@ function encode(string)
     return ret
 end
 
-local function inDic(dic, string)
-    local function buildGetUrl(url, query)
-        if not query then
-            return url
-        end
-        url = url .. '?'
-        for key, val in pairs(query) do
-            url = url .. '&' .. key .. '=' .. encode(val)
-        end
-        return url:gsub('?&', '?')
+local function buildGetUrl(url, query)
+    if not query then
+        return url
     end
+    url = url .. '?'
+    for key, val in pairs(query) do
+        url = url .. '&' .. key .. '=' .. encode(val)
+    end
+    return url:gsub('?&', '?')
+end
 
+local function inDic(dic, string)
     local _, body =
         http.request(
         'GET',
@@ -85,24 +90,30 @@ local function inDic(dic, string)
             {'content-type', 'text/xml'}
         }
     )
-    if body:match '<TotalHitCount>(%d*)</TotalHitCount>' ~= '0' then
-        _, body =
-            http.request(
-            'GET',
-            buildGetUrl(
-                'http://public.dejizo.jp/NetDicV09.asmx/GetDicItemLite',
-                {
-                    Dic = dic,
-                    Item = body:match '<ItemID>(%d*)</ItemID>',
-                    Loc = '',
-                    Prof = 'XHTML'
-                }
-            ),
+    return body:match '<TotalHitCount>(%d*)</TotalHitCount>' ~= '0'
+end
+
+function _M.seekWiki(title)
+    local _, body =
+        http.request(
+        'GET',
+        buildGetUrl(
+            'https://ja.wikipedia.org/w/api.php',
             {
-                {'content-type', 'text/xml'}
+                action = 'query',
+                format = 'json',
+                list = 'search',
+                utf8 = 1,
+                srsearch = title,
+                srlimit = 1,
+                srsort = 'just_match'
             }
-        )
-        return body:match '<Body>.*</Body>':gsub('<[^>]*>', ''):gsub(' *\n', ''):gsub('。.*', ''):gsub('---.*', '')
+        ),
+        {}
+    )
+    local res = json.decode(body).query
+    if res.searchinfo.totalhits > 0 then
+        return res.search[1].snippet:gsub('<[^>]*>', ''):gsub('。.*', '。')
     else
         return false
     end

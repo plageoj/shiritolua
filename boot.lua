@@ -10,7 +10,23 @@ local msg
 client:on(
 	'ready',
 	function()
-		print('Listening to ' .. config.reactChannels[1])
+		local nerr, yomi =
+			pcall(
+			function()
+				local msg =
+					client:getChannel(config.reactChannels[1]):getMessages():toArray(
+					'createdAt',
+					function(msg)
+						return msg.author.id == '522728315824635906' and msg.content:match('%[')
+					end
+				)
+				return table.remove(msg).content:match('%[(.*)%]')
+			end
+		)
+		if nerr then
+			print(yomi)
+			judge.setWord(yomi)
+		end
 	end
 )
 

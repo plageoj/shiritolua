@@ -31,9 +31,6 @@ client:on(
 client:on(
 	'messageCreate',
 	function(message)
-		-- 数字はダメ、コメントも反応しない
-		local content = message.content:gsub('[0-9]', ''):gsub('//.*', '')
-
 		-- 対象チャンネルでなければ、さよなら
 		local outOfKaya =
 			not ut.includes(
@@ -43,11 +40,13 @@ client:on(
 			end
 		)
 		-- Bot の発言と他チャンネルはさよなら
-		if outOfKaya or message.author.bot then
+		if outOfKaya or message.author.bot or #message.mentionedUsers ~= 0 or #message.mentionedChannels ~= 0  then
 			return
 		end
 
-		if #content == 0 or #message.mentionedUsers ~= 0 or #message.mentionedChannels ~= 0 or content:match '\xf0' then
+		local content = ut.preprocess(message.content)
+
+		if not content then
 			return
 		end
 

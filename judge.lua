@@ -7,12 +7,27 @@ local ut = require './utils.lua'
 local _M = {}
 
 local lastword, wordlist = '', {}
+local testing = false
 
 local comboLtr, comboLng = {times = 0, letter = ''}, {times = 0, length = 0}
 local shibariLtrEndTime, shibariLngEndTime = 0, 0
 
 function _M.setWord(yomi)
     lastword = yomi
+end
+
+function _M.getWord()
+    return lastword
+end
+
+function _M.test()
+    testing = true
+end
+
+local function debug(...)
+    if not testing then
+        print(...)
+    end
 end
 
 local function yomiOf(kanji)
@@ -44,7 +59,7 @@ local function yomiOf(kanji)
     return hiragana.converted
 end
 
-function encode(string)
+local function encode(string)
     local ret = ''
     string = tostring(string)
     for i = 1, #string do
@@ -168,7 +183,7 @@ function _M.process(kanji)
         yomiLen = yomiLen - occurrences
     end
 
-    print(kanji, hiragana, processed, yomiLen)
+    debug(kanji, hiragana, processed, yomiLen)
 
     return resh, processed, processed:sub(count), yomiLen, dicres
 end

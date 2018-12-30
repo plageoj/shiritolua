@@ -14,4 +14,13 @@ function _M.includes(obj, fn)
 	return false
 end
 
+function _M.preprocess(content)
+    content = content:gsub('[0-9]', ''):gsub('//.*', '')
+    if #content == 0 or content:match '\xf0' then
+        return false
+    else
+        return content
+    end
+end
+
 return _M

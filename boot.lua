@@ -5,8 +5,6 @@ local config = require './config.lua'
 local ut = require './utils.lua'
 local judge = require './judge.lua'
 
-local msg
-
 client:on(
 	'ready',
 	function()
@@ -49,12 +47,7 @@ client:on(
 			return
 		end
 
-		if #content == 0 or #message.mentionedUsers ~= 0 or #message.mentionedChannels ~= 0 then
-			return
-		end
-
-		-- 絵文字が入ってたら論外
-		if message.content:match '\xf0' then
+		if #content == 0 or #message.mentionedUsers ~= 0 or #message.mentionedChannels ~= 0 or content:match '\xf0' then
 			return
 		end
 
@@ -63,13 +56,10 @@ client:on(
 		local reply, unchik = judge.judge(content)
 
 		if reply then
-			if msg then
-				msg:delete()
-			end
-			msg = message:reply(reply)
 			if unchik then
-				message:reply(unchik)
+				reply = reply .. '\n' .. unchik
 			end
+			message:reply(reply)
 		end
 	end
 )

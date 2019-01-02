@@ -1,9 +1,9 @@
 @ECHO OFF
 
-luvit test.lua
+luvit test/test.lua
 
 IF "%ERRORLEVEL%" == "0" (
     git push origin master
 ) else (
-    ECHO "TEST FAILED!"
+    ECHO TEST FAILED!
 )

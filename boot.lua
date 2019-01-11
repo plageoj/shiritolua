@@ -15,10 +15,10 @@ client:on(
 					client:getChannel(config.reactChannels[1]):getMessages():toArray(
 					'createdAt',
 					function(msg)
-						return msg.author.id == '522728315824635906' and msg.content:match('%[([^%] ]*)%]')
+						return msg.author.id == '522728315824635906' and msg.content:match('%[([^%] <]*)%]')
 					end
 				)
-				return table.remove(msg).content:match('%[([^%] ]*)%]')
+				return table.remove(msg).content:match('%[([^%] <]*)%]')
 			end
 		)
 		if nerr then

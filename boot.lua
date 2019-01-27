@@ -50,8 +50,6 @@ client:on(
 			return
 		end
 
-		message.channel:broadcastTyping()
-
 		local reply, unchik = judge.judge(content)
 
 		if reply then

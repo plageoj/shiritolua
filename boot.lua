@@ -1,6 +1,13 @@
 local discordia = require 'discordia'
 local client = discordia.Client()
 
+if os.getenv('SHIRITOLUA_CONFIG') then
+	local file = io.open('./config.lua', 'w')
+	io.output(file)
+	io.write(os.getenv('SHIRITOLUA_CONFIG'))
+	io.close(file)
+end
+
 local config = require './config.lua'
 local ut = require './utils.lua'
 local judge = require './judge.lua'
@@ -15,7 +22,8 @@ client:on(
 					client:getChannel(config.reactChannels[1]):getMessages():toArray(
 					'createdAt',
 					function(msg)
-						return msg.author.id == '522728315824635906' and msg.content:match('%[[^%] ]*')
+						return msg.author.id == '522728315824635906' and
+							msg.content:match('%[[^%] ]*')
 					end
 				)
 				return table.remove(msg).content:match('%[([^%] ]*)')
@@ -40,7 +48,10 @@ client:on(
 			end
 		)
 		-- Bot の発言と他チャンネルはさよなら
-		if outOfKaya or message.author.bot or #message.mentionedUsers ~= 0 or #message.mentionedChannels ~= 0  then
+		if
+			outOfKaya or message.author.bot or #message.mentionedUsers ~= 0 or
+				#message.mentionedChannels ~= 0
+		 then
 			return
 		end
 

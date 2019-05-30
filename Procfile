@@ -1,1 +1,1 @@
-worker: echo $SHIRITOLUA_CONFIG > config.lua && luvit boot.lua
+worker: tr -d "v1_2" < deps/secure-socket/context.lua > context.lua.tmp && mv context.lua.tmp deps/secure-socket/context.lua && echo $SHIRITOLUA_CONFIG > config.lua && luvit boot.lua

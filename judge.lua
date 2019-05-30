@@ -119,16 +119,21 @@ local function seekWiki(title)
                 format = 'json',
                 list = 'search',
                 utf8 = 1,
-                srsearch = title,
+                srsearch = '"' .. title .. '"',
                 srlimit = 1,
-                srsort = 'just_match'
+                srsort = 'just_match',
+                redirects = 1
             }
         ),
         {}
     )
     local res = json.decode(body).query
     if res.searchinfo.totalhits > 0 then
-        return res.search[1].snippet:gsub('<[^>]*>', ''):gsub('。.*', '。')
+        return res.search[1].snippet:gsub('<[^>]*>', ''):gsub('。.*', '。'):gsub(
+            title,
+            '**' .. title .. '**'
+        ) ..
+            ' - ' .. title
     else
         return false
     end
@@ -209,13 +214,21 @@ function _M.judge(content)
             ret = hiragana .. '。しりとりじゃないじゃん。'
         },
         {
-            cond = shibariLtrEndTime > os.time() and lastword ~= prefix and comboLtr.times < config.shibaredMessages,
-            ret = '[' .. comboLtr.letter .. '] 縛り！残' .. timediff(shibariLtrEndTime) .. '分'
+            cond = shibariLtrEndTime > os.time() and lastword ~= prefix and
+                comboLtr.times < config.shibaredMessages,
+            ret = '[' ..
+                comboLtr.letter ..
+                    '] 縛り！残' .. timediff(shibariLtrEndTime) .. '分'
         },
         {
             cond = shibariLngEndTime > os.time() and comboLng.length ~= yomilen and
                 comboLng.times < config.shibaredMessages,
-            ret = comboLng.length .. '音縛り！' .. hiragana .. '=' .. yomilen .. '音。残' .. timediff(shibariLngEndTime) .. '分'
+            ret = comboLng.length ..
+                '音縛り！' ..
+                    hiragana ..
+                        '=' ..
+                            yomilen ..
+                                '音。残' .. timediff(shibariLngEndTime) .. '分'
         },
         {
             cond = ut.includes(wordlist, hiragana),
@@ -241,9 +254,16 @@ function _M.judge(content)
     if comboLtr.letter == suffix then
         comboLtr.times = comboLtr.times + 1
         suffix = suffix .. ' (' .. suffix .. comboLtr.times + 1 .. ')'
-        if comboLtr.times == config.shibariThreshold and shibariLngEndTime <= os.time() then
+        if
+            comboLtr.times == config.shibariThreshold and
+                shibariLngEndTime <= os.time()
+         then
             shibariLtrEndTime = os.time() + config.shibariLasts * 60
-            ret = ret .. '[' .. lastword .. '] 縛り発動！残' .. tostring(config.shibariLasts) .. '分\n'
+            ret =
+                ret ..
+                '[' ..
+                    lastword ..
+                        '] 縛り発動！残' .. tostring(config.shibariLasts) .. '分\n'
         end
     else
         comboLtr.times, comboLtr.letter = 0, suffix
@@ -253,9 +273,14 @@ function _M.judge(content)
     if comboLng.length == yomilen then
         comboLng.times = comboLng.times + 1
         suffix = suffix .. ' <' .. yomilen .. '音>'
-        if comboLng.times == config.shibariThreshold and shibariLtrEndTime <= os.time() then
+        if
+            comboLng.times == config.shibariThreshold and
+                shibariLtrEndTime <= os.time()
+         then
             shibariLngEndTime = os.time() + config.shibariLasts * 60
-            ret = ret .. yomilen .. '音縛り発動！残' .. tostring(config.shibariLasts) .. '分\n'
+            ret =
+                ret ..
+                yomilen .. '音縛り発動！残' .. tostring(config.shibariLasts) .. '分\n'
         end
     else
         comboLng.times, comboLng.length = 0, yomilen

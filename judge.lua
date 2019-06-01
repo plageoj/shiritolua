@@ -133,7 +133,7 @@ local function seekWiki(title)
             title,
             '**' .. title .. '**'
         ) ..
-            ' - ' .. title
+            ' - ' .. res.search[1].title
     else
         return false
     end

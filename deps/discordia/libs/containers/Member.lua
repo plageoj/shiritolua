@@ -2,9 +2,11 @@
 @c Member x UserPresence
 @d Represents a Discord guild member. Though one user may be a member in more than
 one guild, each presence is represented by a different member object associated
-with that guild.
+with that guild. Note that any method or property that exists for the User class is
+also available in the Member class.
 ]=]
 
+local json = require('json')
 local enums = require('enums')
 local class = require('class')
 local UserPresence = require('containers/abstract/UserPresence')
@@ -13,11 +15,12 @@ local Color = require('utils/Color')
 local Resolver = require('client/Resolver')
 local GuildChannel = require('containers/abstract/GuildChannel')
 local Permissions = require('utils/Permissions')
+local Date = require('utils/Date')
+local Time = require('utils/Time')
 
 local insert, remove, sort = table.insert, table.remove, table.sort
-local band, bor, bnot = bit.band, bit.bor, bit.bnot
 local isInstance = class.isInstance
-local permission = enums.permission
+local permission = assert(enums.permission)
 
 local Member, get = class('Member', UserPresence)
 
@@ -56,6 +59,7 @@ end
 
 --[=[
 @m getColor
+@t mem
 @r Color
 @d Returns a color object that represents the member's color as determined by
 its highest colored role. If the member has no colored roles, then the default
@@ -70,12 +74,9 @@ function Member:getColor()
 	return roles[1] and roles[1]:getColor() or Color()
 end
 
-local function has(a, b, admin)
-	return band(a, b) > 0 or admin and band(a, permission.administrator) > 0
-end
-
 --[=[
 @m hasPermission
+@t mem
 @op channel GuildChannel
 @p perm Permissions-Resolvable
 @r boolean
@@ -107,68 +108,69 @@ function Member:hasPermission(channel, perm)
 		return true
 	end
 
+	local rolePermissions = guild.defaultRole:getPermissions()
+
+	for role in self.roles:iter() do
+		if role.id ~= guild.id then -- just in case
+			rolePermissions = rolePermissions:union(role:getPermissions())
+		end
+	end
+
+	if rolePermissions:has(permission.administrator) then
+		return true
+	end
+
 	if channel then
 
 		local overwrites = channel.permissionOverwrites
 
 		local overwrite = overwrites:get(self.id)
 		if overwrite then
-			if has(overwrite.allowedPermissions, n) then
+			if overwrite:getAllowedPermissions():has(n) then
 				return true
 			end
-			if has(overwrite.deniedPermissions, n) then
+			if overwrite:getDeniedPermissions():has(n) then
 				return false
 			end
 		end
 
-		local allow, deny = 0, 0
+		local allow, deny = Permissions(), Permissions()
 		for role in self.roles:iter() do
 			if role.id ~= guild.id then -- just in case
 				overwrite = overwrites:get(role.id)
 				if overwrite then
-					allow = bor(allow, overwrite.allowedPermissions)
-					deny = bor(deny, overwrite.deniedPermissions)
+					allow = allow:union(overwrite:getAllowedPermissions())
+					deny = deny:union(overwrite:getDeniedPermissions())
 				end
 			end
 		end
 
-		if has(allow, n) then
+		if allow:has(n) then
 			return true
 		end
-		if has(deny, n) then
+		if deny:has(n) then
 			return false
 		end
 
 		local everyone = overwrites:get(guild.id)
 		if everyone then
-			if has(everyone.allowedPermissions, n) then
+			if everyone:getAllowedPermissions():has(n) then
 				return true
 			end
-			if has(everyone.deniedPermissions, n) then
+			if everyone:getDeniedPermissions():has(n) then
 				return false
 			end
 		end
 
 	end
 
-	for role in self.roles:iter() do
-		if role.id ~= guild.id then -- just in case
-			if has(role.permissions, n, true) then
-				return true
-			end
-		end
-	end
-
-	if has(guild.defaultRole.permissions, n, true) then
-		return true
-	end
-
-	return false
+	return rolePermissions:has(n)
 
 end
 
 --[=[
 @m getPermissions
+@t mem
 @op channel GuildChannel
 @r Permissions
 @d Returns a permissions object that represents the member's total permissions for
@@ -188,15 +190,15 @@ function Member:getPermissions(channel)
 		return Permissions.all()
 	end
 
-	local ret = guild.defaultRole.permissions
+	local ret = guild.defaultRole:getPermissions()
 
 	for role in self.roles:iter() do
 		if role.id ~= guild.id then -- just in case
-			ret = bor(ret, role.permissions)
+			ret = ret:union(role:getPermissions())
 		end
 	end
 
-	if band(ret, permission.administrator) > 0 then
+	if ret:has(permission.administrator) then
 		return Permissions.all()
 	end
 
@@ -206,37 +208,38 @@ function Member:getPermissions(channel)
 
 		local everyone = overwrites:get(guild.id)
 		if everyone then
-			ret = band(ret, bnot(everyone.deniedPermissions))
-			ret = bor(ret, everyone.allowedPermissions)
+			ret = everyone:getDeniedPermissions():complement(ret)
+			ret = ret:union(everyone:getAllowedPermissions())
 		end
 
-		local allow, deny = 0, 0
+		local allow, deny = Permissions(), Permissions()
 		for role in self.roles:iter() do
 			if role.id ~= guild.id then -- just in case
 				local overwrite = overwrites:get(role.id)
 				if overwrite then
-					deny = bor(deny, overwrite.deniedPermissions)
-					allow = bor(allow, overwrite.allowedPermissions)
+					deny = deny:union(overwrite:getDeniedPermissions())
+					allow = allow:union(overwrite:getAllowedPermissions())
 				end
 			end
 		end
-		ret = band(ret, bnot(deny))
-		ret = bor(ret, allow)
+		ret = deny:complement(ret)
+		ret = ret:union(allow)
 
 		local overwrite = overwrites:get(self.id)
 		if overwrite then
-			ret = band(ret, bnot(overwrite.deniedPermissions))
-			ret = bor(ret, overwrite.allowedPermissions)
+			ret = overwrite:getDeniedPermissions():complement(ret)
+			ret = ret:union(overwrite:getAllowedPermissions())
 		end
 
 	end
 
-	return Permissions(ret)
+	return ret
 
 end
 
 --[=[
 @m addRole
+@t http?
 @p id Role-ID-Resolvable
 @r boolean
 @d Adds a role to the member. If the member already has the role, then no action is
@@ -261,6 +264,7 @@ end
 
 --[=[
 @m removeRole
+@t http?
 @p id Role-ID-Resolvable
 @r boolean
 @d Removes a role from the member. If the member does not have the role, then no
@@ -295,6 +299,7 @@ end
 
 --[=[
 @m hasRole
+@t mem
 @p id Role-ID-Resolvable
 @r boolean
 @d Checks whether the member has a specific role. This will return true for the
@@ -316,6 +321,7 @@ end
 
 --[=[
 @m setNickname
+@t http
 @p nick string
 @r boolean
 @d Sets the member's nickname. This must be between 1 and 32 characters in length.
@@ -339,16 +345,18 @@ end
 
 --[=[
 @m setVoiceChannel
+@t http
 @p id Channel-ID-Resolvable
 @r boolean
 @d Moves the member to a new voice channel, but only if the member has an active
 voice connection in the current guild. Due to complexities in voice state
 handling, the member's `voiceChannel` property will update asynchronously via
 WebSocket; not as a result of the HTTP request.
+Not supplying an ID will result in the member being disconnected from the channel.
 ]=]
 function Member:setVoiceChannel(id)
-	id = Resolver.channelId(id)
-	local data, err = self.client._api:modifyGuildMember(self._parent._id, self.id, {channel_id = id})
+	id = id and Resolver.channelId(id)
+	local data, err = self.client._api:modifyGuildMember(self._parent._id, self.id, {channel_id = id or json.null})
 	if data then
 		return true
 	else
@@ -358,6 +366,7 @@ end
 
 --[=[
 @m mute
+@t http
 @r boolean
 @d Mutes the member in its guild.
 ]=]
@@ -373,6 +382,7 @@ end
 
 --[=[
 @m unmute
+@t http
 @r boolean
 @d Unmutes the member in its guild.
 ]=]
@@ -388,6 +398,7 @@ end
 
 --[=[
 @m deafen
+@t http
 @r boolean
 @d Deafens the member in its guild.
 ]=]
@@ -403,6 +414,7 @@ end
 
 --[=[
 @m undeafen
+@t http
 @r boolean
 @d Undeafens the member in its guild.
 ]=]
@@ -418,7 +430,8 @@ end
 
 --[=[
 @m kick
-@p reason string
+@t http
+@op reason string
 @r boolean
 @d Equivalent to `Member.guild:kickUser(Member.user, reason)`
 ]=]
@@ -428,8 +441,9 @@ end
 
 --[=[
 @m ban
-@p reason string
-@p days number
+@t http
+@op reason string
+@op days number
 @r boolean
 @d Equivalent to `Member.guild:banUser(Member.user, reason, days)`
 ]=]
@@ -439,12 +453,69 @@ end
 
 --[=[
 @m unban
-@p reason string
+@t http
+@op reason string
 @r boolean
 @d Equivalent to `Member.guild:unbanUser(Member.user, reason)`
 ]=]
 function Member:unban(reason)
 	return self._parent:unbanUser(self._user, reason)
+end
+
+function Member:_timeout(val)
+	local data, err = self.client._api:modifyGuildMember(self._parent._id, self.id, {communication_disabled_until = val or json.null})
+	if data then
+		self._communication_disabled_until = val ~= json.null and val or nil
+		return true
+	else
+		return false, err
+	end
+end
+
+--[=[
+@m timeoutFor
+@t http
+@p duration Time/number
+@r boolean
+@d Sets a timeout for a guild member.
+`duration` is either `Time` object or a `number` of seconds representing how long the timeout lasts.
+To set an expiration date, use `timeoutUntil` instead.
+]=]
+function Member:timeoutFor(duration)
+	if type(duration) == 'number' then
+		duration = (Date() + Time.fromSeconds(duration)):toISO()
+	elseif isInstance(duration, Time) then
+		duration = (Date() + duration):toISO()
+	end
+	return self:_timeout(duration)
+end
+
+--[=[
+@m timeoutUntil
+@t http
+@p date Date/number
+@r boolean
+@d Sets a timeout for a guild member.
+`date` is either `Date` object or a UNIX epoch in seconds at which the member's timeout ends.
+To set a duration, use `timeoutFor` instead.
+]=]
+function Member:timeoutUntil(date)
+	if type(date) == 'number' then
+		date = Date(date):toISO()
+	elseif isInstance(date, Date) then
+		date = date:toISO()
+	end
+	return self:_timeout(date)
+end
+
+--[=[
+@m removeTimeout
+@t http
+@r boolean
+@d Removes the timeout of the member.
+]=]
+function Member:removeTimeout()
+	return self:_timeout()
 end
 
 --[=[@p roles ArrayIterable An iterable array of guild roles that the member has. This does not explicitly
@@ -461,9 +532,9 @@ function get.roles(self)
 end
 
 --[=[@p name string If the member has a nickname, then this will be equivalent to that nickname.
-Otherwise, this is equivalent to `Member.user.username`.]=]
+Otherwise, this is equivalent to `Member.user.name`.]=]
 function get.name(self)
-	return self._nick or self._user._username
+	return self._nick or self._user.name
 end
 
 --[=[@p nickname string/nil The member's nickname, if one is set.]=]
@@ -476,6 +547,12 @@ an ISO 8601 string plus microseconds when available. Member objects generated
 via presence updates lack this property.]=]
 function get.joinedAt(self)
 	return self._joined_at
+end
+
+--[=[@p premiumSince string/nil The date and time at which the current member boosted the guild, represented as
+an ISO 8601 string plus microseconds when available.]=]
+function get.premiumSince(self)
+	return self._premium_since
 end
 
 --[=[@p voiceChannel GuildVoiceChannel/nil The voice channel to which this member is connected in the current guild.]=]
@@ -495,6 +572,22 @@ end
 function get.deafened(self)
 	local state = self._parent._voice_states[self:__hash()]
 	return state and (state.deaf or state.self_deaf) or self._deaf
+end
+
+--[=[@p timedOut boolean Whether the member is timed out in its guild.]=]
+function get.timedOut(self)
+	local state = self._communication_disabled_until
+	if not state then
+		return false
+	else
+		return Date.fromISO(state) > Date()
+	end
+end
+
+--[=[@p timedOutUntil string/nil The raw communication_disabled_until member property.
+Note this may be provided even when the member's time out have expired.]=]
+function get.timedOutUntil(self)
+	return self._communication_disabled_until
 end
 
 --[=[@p guild Guild The guild in which this member exists.]=]

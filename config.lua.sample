@@ -1,5 +1,5 @@
 return {
-    -- Goo API アプリケーション ID
+    -- Yahoo デベロッパーネットワークの Client ID
     yomiApiId = '',
 
     -- Discord トークン、Bot ページより取得

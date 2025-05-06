@@ -7,13 +7,12 @@ local WebSocket = require('client/WebSocket')
 local constants = require('constants')
 local enums = require('enums')
 
-local logLevel = enums.logLevel
+local logLevel = assert(enums.logLevel)
 local min, max, random = math.min, math.max, math.random
 local null = json.null
 local format = string.format
 local sleep = timer.sleep
 local setInterval, clearInterval = timer.setInterval, timer.clearInterval
-local concat = table.concat
 local wrap = coroutine.wrap
 
 local ID_DELAY = constants.ID_DELAY
@@ -39,7 +38,18 @@ local ignore = {
 	['MESSAGE_ACK'] = true,
 	['PRESENCES_REPLACE'] = true,
 	['USER_SETTINGS_UPDATE'] = true,
+	['USER_GUILD_SETTINGS_UPDATE'] = true,
 	['SESSIONS_REPLACE'] = true,
+	['INVITE_CREATE'] = true,
+	['INVITE_DELETE'] = true,
+	['INTEGRATION_CREATE'] = true,
+	['INTEGRATION_UPDATE'] = true,
+	['INTEGRATION_DELETE'] = true,
+	['EMBEDDED_ACTIVITY_UPDATE'] = true,
+	['GIFT_CODE_UPDATE'] = true,
+	['GUILD_JOIN_REQUEST_UPDATE'] = true,
+	['GUILD_JOIN_REQUEST_DELETE'] = true,
+	['APPLICATION_COMMAND_PERMISSIONS_UPDATE'] = true,
 }
 
 local Shard = require('class')('Shard', WebSocket)
@@ -116,14 +126,12 @@ function Shard:handlePayload(payload)
 
 	elseif op == RECONNECT then
 
-		self:warning('Discord has requested a reconnection')
+		self:info('Discord has requested a reconnection')
 		self:disconnect(true)
 
 	elseif op == INVALID_SESSION then
 
-		local session_id = self._session_id
-		self._session_id = nil
-		if payload.d and session_id then
+		if payload.d and self._session_id then
 			self:info('Session invalidated, resuming...')
 			self:resume()
 		else
@@ -134,7 +142,7 @@ function Shard:handlePayload(payload)
 
 	elseif op == HELLO then
 
-		self:info('Received HELLO (%s)', concat(d._trace, ', '))
+		self:info('Received HELLO')
 		self:startHeartbeat(d.heartbeat_interval)
 		if self._session_id then
 			self:resume()
@@ -214,6 +222,7 @@ function Shard:identify()
 		large_threshold = options.largeThreshold,
 		shard = {self._id, client._total_shard_count},
 		presence = next(client._presence) and client._presence,
+		intents = client._intents,
 	}, true)
 
 end

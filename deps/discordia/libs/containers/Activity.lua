@@ -1,9 +1,12 @@
 --[=[
 @c Activity
-@d Represents a Discord user's presence data, either plain game or streaming presence or a rich presence.
+@d Represents a Discord user's presence data, either an application or streaming
+presence or a rich presence. Most if not all properties may be nil.
 ]=]
 
 local Container = require('containers/abstract/Container')
+
+local format = string.format
 
 local Activity, get = require('class')('Activity', Container)
 
@@ -30,35 +33,48 @@ function Activity:_loadMore(data)
 	self._party_id = party and party.id
 	self._party_size = party and party.size and party.size[1]
 	self._party_max = party and party.size and party.size[2]
+	local emoji = data.emoji
+	self._emoji_name = emoji and emoji.name
+	self._emoji_id = emoji and emoji.id
+	self._emoji_animated = emoji and emoji.animated
 end
 
---[=[@p start number/nil The Unix timestamp for when this activity was started.]=]
+--[=[
+@m __hash
+@r string
+@d Returns `Activity.parent:__hash()`
+]=]
+function Activity:__hash()
+	return self._parent:__hash()
+end
+
+--[=[@p start number/nil The Unix timestamp for when this Rich Presence activity was started.]=]
 function get.start(self)
 	return self._start
 end
 
---[=[@p stop number/nil The Unix timestamp for when this activity was stopped.]=]
+--[=[@p stop number/nil The Unix timestamp for when this Rich Presence activity was stopped.]=]
 function get.stop(self)
 	return self._stop
 end
 
---[=[@p name string/nil The game that the user is currently playing.]=]
+--[=[@p name string/nil The name of the activity in which the user is currently engaged.]=]
 function get.name(self)
 	return self._name
 end
 
---[=[@p type number/nil The type of user's game status. See the `gameType`
+--[=[@p type number/nil The user's activity type. See the `activityType`
 enumeration for a human-readable representation.]=]
 function get.type(self)
 	return self._type
 end
 
---[=[@p url string/nil The URL that is set for a user's streaming game status.]=]
+--[=[@p url string/nil The URL for a user's streaming activity.]=]
 function get.url(self)
 	return self._url
 end
 
---[=[@p applicationId string The application id controlling this activity.]=]
+--[=[@p applicationId string/nil The application id controlling this Rich Presence activity.]=]
 function get.applicationId(self)
 	return self._application_id
 end
@@ -106,6 +122,36 @@ end
 --[=[@p partyMax number/nil Max size for the Rich Presence party.]=]
 function get.partyMax(self)
 	return self._party_max
+end
+
+--[=[@p emojiId string/nil The ID of the emoji used in this presence if one is
+set and if it is a custom emoji.]=]
+function get.emojiId(self)
+	return self._emoji_id
+end
+
+--[=[@p emojiName string/nil The name of the emoji used in this presence if one
+is set and if it has a custom emoji. This will be the raw string for a standard emoji.]=]
+function get.emojiName(self)
+	return self._emoji_name
+end
+
+--[=[@p emojiHash string/nil The discord hash for the emoji used in this presence if one is
+set. This will be the raw string for a standard emoji.]=]
+function get.emojiHash(self)
+	if self._emoji_id then
+		return self._emoji_name .. ':' .. self._emoji_id
+	else
+		return self._emoji_name
+	end
+end
+
+--[=[@p emojiURL string/nil string The URL that can be used to view a full
+version of the emoji used in this activity if one is set and if it is a custom emoji.]=]
+function get.emojiURL(self)
+	local id = self._emoji_id
+	local ext = self._emoji_animated and 'gif' or 'png'
+	return id and format('https://cdn.discordapp.com/emojis/%s.%s', id, ext) or nil
 end
 
 return Activity

@@ -5,6 +5,7 @@ simple content strings, rich embeds, attachments, or reactions.
 ]=]
 
 local json = require('json')
+local enums = require('enums')
 local constants = require('constants')
 local Cache = require('iterables/Cache')
 local ArrayIterable = require('iterables/ArrayIterable')
@@ -15,6 +16,8 @@ local Resolver = require('client/Resolver')
 local insert = table.insert
 local null = json.null
 local format = string.format
+local messageFlag = assert(enums.messageFlag)
+local band, bor, bnot = bit.band, bit.bor, bit.bnot
 
 local Message, get = require('class')('Message', Snowflake)
 
@@ -38,7 +41,7 @@ function Message:_load(data)
 end
 
 local function parseMentions(content, pattern)
-	if not content:find('%b<>') then return end
+	if not content:find('%b<>') then return {} end
 	local mentions, seen = {}, {}
 	for id in content:gmatch(pattern) do
 		if not seen[id] then
@@ -51,8 +54,10 @@ end
 
 function Message:_loadMore(data)
 
+	local mentions = {}
 	if data.mentions then
 		for _, user in ipairs(data.mentions) do
+			mentions[user.id] = true
 			if user.member then
 				user.member.user = user
 				self._parent._parent._members:_insert(user.member)
@@ -62,10 +67,20 @@ function Message:_loadMore(data)
 		end
 	end
 
+	if data.referenced_message and data.referenced_message ~= null then
+		if mentions[data.referenced_message.author.id] then
+			self._reply_target = data.referenced_message.author.id
+		end
+		self._referencedMessage = self._parent._messages:_insert(data.referenced_message)
+	end
+
 	local content = data.content
 	if content then
 		if self._mentioned_users then
 			self._mentioned_users._array = parseMentions(content, '<@!?(%d+)>')
+			if self._reply_target then
+				insert(self._mentioned_users._array, 1, self._reply_target)
+			end
 		end
 		if self._mentioned_roles then
 			self._mentioned_roles._array = parseMentions(content, '<@&(%d+)>')
@@ -85,6 +100,13 @@ function Message:_loadMore(data)
 
 	if data.attachments then
 		self._attachments = #data.attachments > 0 and data.attachments or nil
+	end
+
+	if data.sticker_items then
+		self._sticker_items = #data.sticker_items > 0 and data.sticker_items or nil
+	end
+	if data.sticker_items then
+		self._sticker_items = #data.sticker_items > 0 and data.sticker_items or nil
 	end
 
 end
@@ -119,10 +141,11 @@ end
 function Message:_removeReaction(d)
 
 	local reactions = self._reactions
+	if not reactions then return nil end
 
 	local emoji = d.emoji
 	local k = emoji.id ~= null and emoji.id or emoji.name
-	local reaction = reactions:get(k)
+	local reaction = reactions:get(k) or nil
 
 	if not reaction then return nil end -- uncached reaction?
 
@@ -163,6 +186,7 @@ end
 
 --[=[
 @m setContent
+@t http
 @p content string
 @r boolean
 @d Sets the message's content. The message must be authored by the current user
@@ -170,11 +194,18 @@ end
 must be from 1 to 2000 characters in length.
 ]=]
 function Message:setContent(content)
-	return self:_modify({content = content or null})
+	return self:_modify({
+		content = content or null,
+		allowed_mentions = {
+			parse = {'users', 'roles', 'everyone'},
+			replied_user = not not self._reply_target,
+		},
+	})
 end
 
 --[=[
 @m setEmbed
+@t http
 @p embed table
 @r boolean
 @d Sets the message's embed. The message must be authored by the current user.
@@ -185,7 +216,65 @@ function Message:setEmbed(embed)
 end
 
 --[=[
+@m hideEmbeds
+@t http
+@r boolean
+@d Hides all embeds for this message.
+]=]
+function Message:hideEmbeds()
+	local flags = bor(self._flags or 0, messageFlag.suppressEmbeds)
+	return self:_modify({flags = flags})
+end
+
+--[=[
+@m showEmbeds
+@t http
+@r boolean
+@d Shows all embeds for this message.
+]=]
+function Message:showEmbeds()
+	local flags = band(self._flags or 0, bnot(messageFlag.suppressEmbeds))
+	return self:_modify({flags = flags})
+end
+
+--[=[
+@m hasFlag
+@t mem
+@p flag Message-Flag-Resolvable
+@r boolean
+@d Indicates whether the message has a particular flag set.
+]=]
+function Message:hasFlag(flag)
+	flag = Resolver.messageFlag(flag)
+	return band(self._flags or 0, flag) > 0
+end
+
+--[=[
+@m update
+@t http
+@p data table
+@r boolean
+@d Sets multiple properties of the message at the same time using a table similar
+to the one supported by `TextChannel.send`, except only `content` and `embed(s)`
+are valid fields; `mention(s)`, `file(s)`, etc are not supported. The message
+must be authored by the current user. (ie: you cannot change the embed of messages
+sent by other users).
+]=]
+function Message:update(data)
+	return self:_modify({
+		content = data.content or null,
+		embed = data.embed or null,
+		embeds = data.embeds or null,
+		allowed_mentions = {
+			parse = {'users', 'roles', 'everyone'},
+			replied_user = not not self._reply_target,
+		},
+	})
+end
+
+--[=[
 @m pin
+@t http
 @r boolean
 @d Pins the message in the channel.
 ]=]
@@ -201,6 +290,7 @@ end
 
 --[=[
 @m unpin
+@t http
 @r boolean
 @d Unpins the message in the channel.
 ]=]
@@ -216,6 +306,7 @@ end
 
 --[=[
 @m addReaction
+@t http
 @p emoji Emoji-Resolvable
 @r boolean
 @d Adds a reaction to the message. Note that this does not return the new reaction
@@ -233,11 +324,12 @@ end
 
 --[=[
 @m removeReaction
+@t http
 @p emoji Emoji-Resolvable
 @op id User-ID-Resolvable
 @r boolean
 @d Removes a reaction from the message. Note that this does not return the old
-reaction object; wait for the `reactionAdd` event instead. If no user is
+reaction object; wait for the `reactionRemove` event instead. If no user is
 indicated, then this will remove the current user's reaction.
 ]=]
 function Message:removeReaction(emoji, id)
@@ -258,6 +350,7 @@ end
 
 --[=[
 @m clearReactions
+@t http
 @r boolean
 @d Removes all reactions from the message.
 ]=]
@@ -272,6 +365,7 @@ end
 
 --[=[
 @m delete
+@t http
 @r boolean
 @d Permanently deletes the message. This cannot be undone!
 ]=]
@@ -290,12 +384,29 @@ end
 
 --[=[
 @m reply
+@t http
 @p content string/table
 @r Message
 @d Equivalent to `Message.channel:send(content)`.
 ]=]
 function Message:reply(content)
 	return self._parent:send(content)
+end
+
+--[=[
+@m crosspost
+@t http
+@r Message
+@d Publish this announcement message to all following channels.
+Returns the current Message object, for compatibility reasons.
+]=]
+function Message:crosspost()
+	local data, err = self.client._api:crosspostMessage(self._parent._id, self._id)
+	if data then
+		return self._parent._messages:_insert(data)
+	else
+		return nil, err
+	end
 end
 
 --[=[@p reactions Cache An iterable cache of all reactions that exist for this message.]=]
@@ -306,12 +417,14 @@ function get.reactions(self)
 	return self._reactions
 end
 
---[=[@p mentionedUsers ArrayIterable An iterable array of all users that are mentioned in this message.  Object order
-is not guaranteed.]=]
+--[=[@p mentionedUsers ArrayIterable An iterable array of all users that are mentioned in this message.]=]
 function get.mentionedUsers(self)
 	if not self._mentioned_users then
 		local users = self.client._users
 		local mentions = parseMentions(self._content, '<@!?(%d+)>')
+		if self._reply_target then
+			insert(mentions, 1, self._reply_target)
+		end
 		self._mentioned_users = ArrayIterable(mentions, function(id)
 			return users:get(id)
 		end)
@@ -321,8 +434,7 @@ end
 
 --[=[@p mentionedRoles ArrayIterable An iterable array of known roles that are mentioned in this message, excluding
 the default everyone role. The message must be in a guild text channel and the
-roles must be cached in that channel's guild for them to appear here. Object
-order is not guaranteed.]=]
+roles must be cached in that channel's guild for them to appear here.]=]
 function get.mentionedRoles(self)
 	if not self._mentioned_roles then
 		local client = self.client
@@ -336,22 +448,21 @@ function get.mentionedRoles(self)
 end
 
 --[=[@p mentionedEmojis ArrayIterable An iterable array of all known emojis that are mentioned in this message. If
-the client does not have the emoji cached, then it will not appear here. Object order is not guaranteed.]=]
+the client does not have the emoji cached, then it will not appear here.]=]
 function get.mentionedEmojis(self)
 	if not self._mentioned_emojis then
 		local client = self.client
 		local mentions = parseMentions(self._content, '<a?:[%w_]+:(%d+)>')
 		self._mentioned_emojis = ArrayIterable(mentions, function(id)
 			local guild = client._emoji_map[id]
-			return guild and guild._emojis:get(id)
+			return guild and guild._emojis:get(id) or nil
 		end)
 	end
 	return self._mentioned_emojis
 end
 
 --[=[@p mentionedChannels ArrayIterable An iterable array of all known channels that are mentioned in this message. If
-the client does not have the channel cached, then it will not appear here.
-Object order is not guaranteed.]=]
+the client does not have the channel cached, then it will not appear here.]=]
 function get.mentionedChannels(self)
 	if not self._mentioned_channels then
 		local client = self.client
@@ -366,6 +477,27 @@ function get.mentionedChannels(self)
 		end)
 	end
 	return self._mentioned_channels
+end
+
+--[=[@p stickers ArrayIterable An iterable array of all stickers that are sent in this message.]=]
+function get.stickers(self)
+	if not self._stickers then
+		local client = self.client
+		self._stickers = ArrayIterable(self._sticker_items, function(sticker)
+			if sticker.format_type == 1 then
+				local guild = client._sticker_map[sticker.id]
+				return guild and guild._stickers:get(sticker.id) or nil
+			else
+				-- return client:getSticker(sticker.id) ??
+			end
+		end)
+	end
+	return self._stickers
+end
+
+--[=[@p sticker Sticker The first sticker that is sent in this message.]=]
+function get.sticker(self)
+	return self.stickers and self.stickers.first or nil
 end
 
 local usersMeta = {__index = function(_, k) return '@' .. k end}
@@ -403,7 +535,7 @@ function get.cleanContent(self)
 			:gsub('<@!?(%d+)>', users)
 			:gsub('<@&(%d+)>', roles)
 			:gsub('<#(%d+)>', channels)
-			:gsub('<a?(:.+:)%d+>', '%1')
+			:gsub('<a?(:[%w_]+:)%d+>', '%1')
 			:gsub('@everyone', everyone)
 			:gsub('@here', here)
 
@@ -439,7 +571,7 @@ function get.editedTimestamp(self)
 	return self._edited_timestamp
 end
 
---[=[@p oldContent string/table Yields a table containing keys as timestamps and
+--[=[@p oldContent table/nil Yields a table containing keys as timestamps and
 value as content of the message at that time.]=]
 function get.oldContent(self)
 	return self._old
@@ -504,10 +636,21 @@ function get.member(self)
 	return guild and guild._members:get(self._author._id)
 end
 
+--[=[@p referencedMessage Message/nil If available, the previous message that
+this current message references as seen in replies.]=]
+function get.referencedMessage(self)
+	return self._referencedMessage
+end
+
 --[=[@p link string URL that can be used to jump-to the message in the Discord client.]=]
 function get.link(self)
 	local guild = self.guild
-	return format('https://discordapp.com/channels/%s/%s/%s', guild and guild._id or '@me', self._parent._id, self._id)
+	return format('https://discord.com/channels/%s/%s/%s', guild and guild._id or '@me', self._parent._id, self._id)
+end
+
+--[=[@p webhookId string/nil The ID of the webhook that generated this message, if applicable.]=]
+function get.webhookId(self)
+	return self._webhook_id
 end
 
 return Message

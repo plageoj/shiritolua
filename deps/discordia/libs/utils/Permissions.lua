@@ -1,5 +1,8 @@
 --[=[
-@ic Permissions
+@c Permissions
+@t ui
+@mt mem
+@op value number
 @d Wrapper for a bitfield that is more specifically used to represent Discord
 permissions. See the `permission` enumeration for acceptable permission values.
 ]=]
@@ -7,13 +10,13 @@ permissions. See the `permission` enumeration for acceptable permission values.
 local enums = require('enums')
 local Resolver = require('client/Resolver')
 
-local permission = enums.permission
+local permission = assert(enums.permission)
 
 local format = string.format
 local band, bor, bnot, bxor = bit.band, bit.bor, bit.bnot, bit.bxor
 local sort, insert, concat = table.sort, table.insert, table.concat
 
-local ALL = 0
+local ALL = 0ULL
 for _, value in pairs(permission) do
 	ALL = bor(ALL, value)
 end
@@ -21,7 +24,7 @@ end
 local Permissions, get = require('class')('Permissions')
 
 function Permissions:__init(value)
-	self._value = tonumber(value) or 0
+	self._value = (tonumber(value) or 0) + 0ULL
 end
 
 --[=[
@@ -36,10 +39,29 @@ function Permissions:__tostring()
 	else
 		local a = self:toArray()
 		sort(a)
-		return format('Permissions: %i (%s)', self._value, concat(a, ', '))
+		return format('Permissions: %i (%s)', self.value, concat(a, ', '))
 	end
 end
 
+--[=[
+@m fromMany
+@t static
+@p ... Permission-Resolvables
+@r Permissions
+@d Returns a Permissions object with all of the defined permissions.
+]=]
+function Permissions.fromMany(...)
+	local ret = Permissions()
+	ret:enable(...)
+	return ret
+end
+
+--[=[
+@m all
+@t static
+@r Permissions
+@d Returns a Permissions object with all permissions.
+]=]
 function Permissions.all()
 	return Permissions(ALL)
 end
@@ -60,12 +82,12 @@ local function getPerm(i, ...)
 	if not n then
 		return error('Invalid permission: ' .. tostring(v), 2)
 	end
-	return n
+	return n + 0ULL
 end
 
 --[=[
 @m enable
-@p ... Permissions-Resolvable
+@p ... Permission-Resolvables
 @r nil
 @d Enables a specific permission or permissions. See the `permission` enumeration
 for acceptable permission values.
@@ -81,7 +103,7 @@ end
 
 --[=[
 @m disable
-@p ... Permissions-Resolvable
+@p ... Permission-Resolvables
 @r nil
 @d Disables a specific permission or permissions. See the `permission` enumeration
 for acceptable permission values.
@@ -97,7 +119,7 @@ end
 
 --[=[
 @m has
-@p ... Permissions-Resolvable
+@p ... Permission-Resolvables
 @r boolean
 @d Returns whether this set has a specific permission or permissions. See the
 `permission` enumeration for acceptable permission values.
@@ -128,7 +150,7 @@ end
 @d Disables all permissions values.
 ]=]
 function Permissions:disableAll()
-	self._value = 0
+	self._value = 0ULL
 end
 
 --[=[
@@ -158,7 +180,7 @@ end
 --[=[
 @m toArray
 @r table
-@d Returns an array of the names of the permissions that this objects represents.
+@d Returns an array of the names of the permissions that this object represents.
 ]=]
 function Permissions:toArray()
 	local ret = {}
@@ -194,7 +216,7 @@ function Permissions:intersection(other) -- in both
 end
 
 --[=[
-@m name
+@m difference
 @p other Permissions
 @r Permissions
 @d Returns a new Permissions object that contains the permissions that are not
@@ -227,7 +249,7 @@ end
 
 --[=[@p value number The raw decimal value that represents the permissions value.]=]
 function get.value(self)
-	return self._value
+	return tonumber(self._value)
 end
 
 return Permissions

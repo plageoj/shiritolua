@@ -1,9 +1,11 @@
 --[=[
-@ic Mutex
+@c Mutex
+@t ui
+@mt mem
 @d Mutual exclusion class used to control Lua coroutine execution order.
 ]=]
 
-local Deque = require('./Deque')
+local Deque = require('utils/Deque')
 local timer = require('timer')
 
 local yield = coroutine.yield

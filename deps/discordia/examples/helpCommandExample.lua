@@ -2,6 +2,11 @@ local discordia = require('discordia')
 local client = discordia.Client()
 discordia.extensions() -- load all helpful extensions
 
+-- enables receiving message.content so it is not empty
+-- make sure you also enable it in Developer Portal
+-- see https://github.com/SinisterRectus/Discordia/discussions/369
+client:enableIntents(discordia.enums.gatewayIntent.messageContent)
+
 local prefix = "."
 local commands = {
 	[prefix .. "ping"] = {
@@ -19,13 +24,13 @@ local commands = {
 }
 
 client:on('ready', function()
-	p(string.format('Logged in as %s', client.user.username))
+	print(string.format('Logged in as %s', client.user.username))
 end)
 
 client:on("messageCreate", function(message)
 	local args = message.content:split(" ") -- split all arguments into a table
 
-	local command = commands[prefix..args[1]]
+	local command = commands[args[1]]
 	if command then -- ping or hello
 		command.exec(message) -- execute the command
 	end
@@ -33,7 +38,7 @@ client:on("messageCreate", function(message)
 	if args[1] == prefix.."help" then -- display all the commands
 		local output = {}
 		for word, tbl in pairs(commands) do
-			table.insert(output, "Command: " .. word .. "\nDescription: " .. tbl.description)
+			table.insert(output, string.format("Command: %s\nDescription: %s", word, tbl.description))
 		end
 
 		message:reply(table.concat(output, "\n\n"))

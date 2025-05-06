@@ -24,7 +24,7 @@ local function test(name, func, case)
     end
     print('\n--- TESTING: ', name, ' ---\n')
     for i, case in ipairs(case) do
-        local res = {func(case[1])}
+        local res = { func(case[1]) }
         if eq(res, case[2]) then
             print('\x1b[42m\x1b[30m PASSED \x1b[0m case ' .. i, case[1])
             numpass = numpass + 1
@@ -42,7 +42,6 @@ local function test(name, func, case)
     return numfail
 end
 
-judge.test()
 
 client:on(
     'ready',

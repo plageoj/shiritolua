@@ -1,5 +1,6 @@
 local json = require 'json'
 local http = require 'coro-http'
+local utf8 = require 'utf8'
 
 local config = require './config.lua'
 local ut = require './utils.lua'
@@ -55,7 +56,7 @@ local function yomiOf(kanji)
             )
         result = json.decode(body)
 
-        if result and  type(result.jsonrpc) ~= 'string' then
+        if result and type(result.jsonrpc) ~= 'string' then
             rt.sleep(retry)
             retry = retry * 2
         else
@@ -143,33 +144,39 @@ local function seekWiki(title)
     end
 end
 
+local function katakana_to_hiragana(str)
+    local ret = ''
+    for _, code in utf8.codes(str) do
+        if code >= 0x30A1 and code <= 0x30F6 then
+            ret = ret .. utf8.char(code - 0x60)
+        else
+            ret = ret .. utf8.char(code)
+        end
+    end
+    return ret
+end
+
 function _M.process(kanji)
     local dicres = seekWiki(kanji)
     if not inDic(kanji) then
         return false
     end
-    local hiragana = yomiOf(kanji)
+    local hiragana = katakana_to_hiragana(yomiOf(kanji))
     local hiraganar = {
         '[!-~]',
         '\xe3\x82[\x97-\x9f]', -- 平仮名特殊記号 ゛ など
         '・',
         ' ',
+        '\xe3\x82\xa0',
         '\xe3\x83[\xbd-\xbf]' -- カタカナ特殊記号
     }
     -- 記号を除く
     for _, str in ipairs(hiraganar) do
         hiragana = hiragana:gsub(str, '')
     end
-    local resh = ''
-    for i = 1, #hiragana do
-        local mt = hiragana:sub(i, i + 2):match '\xe3[\x81-\x83][\x80-\xbf]'
-        if mt then
-            resh = resh .. mt
-        end
-    end
 
-    local processed = resh:gsub('ー', '')
-    local count, yomiLen = -3, math.floor(#resh / 3)
+    local processed = hiragana:gsub('ー', '')
+    local count, yomiLen = -3, math.floor(#hiragana / 3)
     local smallLtr = { 'ゃ', 'ゅ', 'ょ', 'っ', 'ぁ', 'ぃ', 'ぅ', 'ぇ', 'ぉ' }
 
     -- 最終音は何バイトか？
@@ -188,13 +195,13 @@ function _M.process(kanji)
     table.remove(smallLtr, 4)
     -- 「っ」以外は0音としてカウントする
     for _, ltr in ipairs(smallLtr) do
-        local _, occurrences = resh:gsub(ltr, '')
+        local _, occurrences = hiragana:gsub(ltr, '')
         yomiLen = yomiLen - occurrences
     end
 
     debug(kanji, hiragana, processed, yomiLen)
 
-    return resh, processed, processed:sub(count), yomiLen, dicres
+    return hiragana, processed, processed:sub(count), yomiLen, dicres
 end
 
 function _M.judge(content)

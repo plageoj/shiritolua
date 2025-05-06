@@ -1,4 +1,12 @@
+# Executables
+lit
+luvi
+luvit
+*.exe
+
+# Config
 config.lua
+
+# Logs
 discordia.log
 gateway.json
-deps/

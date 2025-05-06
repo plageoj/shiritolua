@@ -3,6 +3,10 @@ local client = discordia.Client()
 
 if os.getenv('SHIRITOLUA_CONFIG') then
     local file = io.open('./config.lua', 'w')
+    if not file then
+        print('Cannot create config.lua. Check permission.')
+        return
+    end
     io.output(file)
     io.write(os.getenv('SHIRITOLUA_CONFIG'))
     io.close(file)
@@ -14,6 +18,7 @@ local judge = require './judge.lua'
 
 client:on(
     'ready',
+    -- 直前のしりとりの読みを引き継ぐ
     function()
         local err, yomi =
             pcall(

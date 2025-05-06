@@ -157,12 +157,12 @@ local function katakana_to_hiragana(str)
 end
 
 function _M.process(kanji)
-    local dicres = seekWiki(kanji)
+    local knowledge = seekWiki(kanji)
     if not inDic(kanji) then
         return false
     end
     local hiragana = katakana_to_hiragana(yomiOf(kanji))
-    local hiraganar = {
+    local punctuations = {
         '[!-~]',
         '\xe3\x82[\x97-\x9f]', -- 平仮名特殊記号 ゛ など
         '・',
@@ -171,7 +171,7 @@ function _M.process(kanji)
         '\xe3\x83[\xbd-\xbf]' -- カタカナ特殊記号
     }
     -- 記号を除く
-    for _, str in ipairs(hiraganar) do
+    for _, str in ipairs(punctuations) do
         hiragana = hiragana:gsub(str, '')
     end
 
@@ -201,11 +201,11 @@ function _M.process(kanji)
 
     debug(kanji, hiragana, processed, yomiLen)
 
-    return hiragana, processed, processed:sub(count), yomiLen, dicres
+    return hiragana, processed, processed:sub(count), yomiLen, knowledge
 end
 
 function _M.judge(content)
-    local hiragana, processed, suffix, yomilen, unchik = _M.process(content)
+    local hiragana, processed, suffix, yomiLen, knowledge = _M.process(content)
     if hiragana == false then
         return '我輩の辞書に「' .. content .. '」はありません。[' .. lastWord .. ']'
     end
@@ -232,13 +232,13 @@ function _M.judge(content)
                 '] 縛り！残' .. timeDiff(shibariLtrEndTime) .. '分'
         },
         {
-            cond = shibariLngEndTime > os.time() and comboLng.length ~= yomilen and
+            cond = shibariLngEndTime > os.time() and comboLng.length ~= yomiLen and
                 comboLng.times < config.shibaredMessages,
             ret = comboLng.length ..
                 '音縛り！' ..
                 hiragana ..
                 '=' ..
-                yomilen ..
+                yomiLen ..
                 '音。残' .. timeDiff(shibariLngEndTime) .. '分'
         },
         {
@@ -281,9 +281,9 @@ function _M.judge(content)
     end
 
     -- 音数コンボ判定
-    if comboLng.length == yomilen then
+    if comboLng.length == yomiLen then
         comboLng.times = comboLng.times + 1
-        suffix = suffix .. ' <' .. yomilen .. '音>'
+        suffix = suffix .. ' <' .. yomiLen .. '音>'
         if
             comboLng.times == config.shibariThreshold and
             shibariLtrEndTime <= os.time()
@@ -291,14 +291,14 @@ function _M.judge(content)
             shibariLngEndTime = os.time() + config.shibariLasts * 60
             ret =
                 ret ..
-                yomilen .. '音縛り発動！残' .. tostring(config.shibariLasts) .. '分\n'
+                yomiLen .. '音縛り発動！残' .. tostring(config.shibariLasts) .. '分\n'
         end
     else
-        comboLng.times, comboLng.length = 0, yomilen
+        comboLng.times, comboLng.length = 0, yomiLen
     end
 
     -- 無事受理されました
-    return ret .. hiragana .. ' [' .. suffix .. ']', unchik
+    return ret .. hiragana .. ' [' .. suffix .. ']', knowledge
 end
 
 return _M

@@ -22,7 +22,7 @@ client:on(
                         client:getChannel(config.reactChannels[1]):getMessages():toArray(
                             'createdAt',
                             function(msg)
-                                return msg.author.id == '522728315824635906' and
+                                return msg.author.id == client.user.id and
                                     msg.content:match('%[[^%] ]*')
                             end
                         )

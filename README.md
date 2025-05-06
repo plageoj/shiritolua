@@ -5,7 +5,7 @@ Discord 上でしりとりを管轄する Bot です。
 ## Requirements
 
 + [luvit/luvit](https://luvit.io/)
-+ SinisterRectus/discordia
++ [SinisterRectus/discordia](https://github.com/SinisterRectus/Discordia)
 
 
 ## Quick Start
@@ -37,11 +37,13 @@ Heroku では環境変数 `SHIRITOLUA_CONFIG` に記述してください。
 
 ### `yomiApiId` (string)
 
-[GooラボAPI](https://labs.goo.ne.jp/jp/apiregister/) のアプリケーション ID を記述します。
+[Yahoo! JAPAN Web API](https://e.developer.yahoo.co.jp/dashboard/) のアプリケーション ID を記述します。
 
 ### `discordBotToken` (string)
 
 [Discord Applications](https://discordapp.com/developers/applications/) → Bot から Token を取得して記述します。
+
+Bot の設定から Message Content Intent を有効にしてください。
 
 ### `reactChannels` { (string)... }
 

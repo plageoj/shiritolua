@@ -12,7 +12,7 @@ if os.getenv('SHIRITOLUA_CONFIG') then
     io.close(file)
 end
 
-local config = require './config.lua'
+local config = require '../config.lua'
 local util = require './utils.lua'
 local judge = require './judge.lua'
 

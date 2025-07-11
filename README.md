@@ -7,7 +7,6 @@ Discord 上でしりとりを管轄する Bot です。
 + [luvit/luvit](https://luvit.io/)
 + [SinisterRectus/discordia](https://github.com/SinisterRectus/Discordia)
 
-
 ## Quick Start
 
 ```bash
@@ -17,15 +16,14 @@ cp config.lua.sample config.lua
 vim config.lua # See below
 curl -L https://github.com/luvit/lit/raw/master/get-lit.sh | sh
 ./lit install
-./luvit boot.lua
+./luvit src/boot.lua
 ```
 
-## Deploy to Heroku
+## Run on Docker
 
 ```bash
-heroku create [YOUR_APP_NAME] --buildpack https://github.com/squeek502/heroku-buildpack-luvit.git
-heroku config:set SHIRITOLUA_CONFIG=`cat config.lua`
-git push heroku master
+docker build -t shiritolua .
+docker run --rm -it --name shiritolua -e SHIRITOLUA_CONFIG="$(cat config.lua)" shiritolua
 ```
 
 ## Configurations

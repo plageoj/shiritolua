@@ -1,0 +1,14 @@
+services:
+  shiritolua:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SUDACHI_VERSION: ${SUDACHI_VERSION:-0.7.5}
+        DICTIONARY_VERSION: ${DICTIONARY_VERSION:-20250515}
+    image: shiritolua
+    container_name: shiritolua
+    volumes:
+      - ./src:/app/src
+      - ./test:/app/test
+      - ./config.lua:/app/config.lua

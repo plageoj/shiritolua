@@ -1,5 +1,6 @@
 local json = require 'json'
 local http = require 'coro-http'
+local querystring = require 'querystring'
 
 local kana = require './kana.lua'
 
@@ -29,7 +30,7 @@ local function split(str, ts)
 
     local t = {}
     local i = 1
-    for s in string.gmatch(str, "([^" .. ts .. "]+)") do
+    for s in string.gmatch(str, '(.-)' .. ts) do
         t[i] = s
         i = i + 1
     end
@@ -82,7 +83,7 @@ local function buildGetUrl(url, query)
     end
     url = url .. '?'
     for key, val in pairs(query) do
-        url = url .. '&' .. key .. '=' .. encode(val)
+        url = url .. '&' .. key .. '=' .. querystring.urlencode(val)
     end
     return url:gsub('?&', '?')
 end
@@ -92,30 +93,50 @@ function _M.seekWiki(title)
         http.request(
             'GET',
             buildGetUrl(
-                'https://ja.wikipedia.org/w/api.php',
+                'https://api.wikimedia.org/core/v1/wikipedia/ja/search/page',
                 {
-                    action = 'query',
-                    format = 'json',
-                    list = 'search',
-                    utf8 = 1,
-                    srsearch = '"' .. title .. '"',
-                    srlimit = 1,
-                    srsort = 'just_match',
-                    redirects = 1
+                    q = '"' .. title .. '"',
+                    limit = 1,
                 }
             ),
-            {}
+            {
+                ['User-Agent'] = 'Shiritolua/equaaqua@hotmail.com'
+            }
         )
-    local res = json.decode(body).query
-    if res.searchinfo.totalhits > 0 then
-        return res.search[1].snippet:gsub('<[^>]*>', ''):gsub('。.*', '。'):gsub(
-                title,
-                '**' .. title .. '**'
-            ) ..
-            ' - ' .. res.search[1].title
-    else
+    local res = json.decode(body)
+    if not res or not res.pages or #res.pages == 0 then
         return false
     end
+    local page = res.pages[1]
+
+    local excerpt = page.excerpt:gsub(
+        '<[^>]*>', ''):gsub(
+        '&quot;', '"'):gsub(
+        '&lt;', '<'):gsub(
+        '&gt;', '>'):gsub(
+        '&amp;', '&')
+    local snippets = split(excerpt, '。')
+    local snippet = excerpt
+    local maxHits = 0
+    for _, s in ipairs(snippets) do
+        local hits = 0
+        for _ in s:gmatch(title) do
+            hits = hits + 1
+        end
+        if hits > maxHits then
+            maxHits = hits
+            snippet = s .. '。'
+        end
+    end
+
+    local description = ''
+    if page.description ~= nil then
+        description = '/' .. page.description
+    end
+
+    return snippet:gsub(title, '**' .. title .. '**')
+        .. ' - [' .. page.title .. '](https://ja.wikipedia.org/wiki/'
+        .. querystring.urlencode(page.title) .. ')' .. description
 end
 
 return _M

@@ -100,8 +100,12 @@ function _M.judge(content)
             ret = 'んで終わっています。'
         },
         {
-            cond = #lastWord ~= 0 and lastWord ~= prefix,
+            cond = #lastWord ~= 0 and lastWord ~= prefix and hiragana ~= '',
             ret = hiragana .. '。しりとりじゃないじゃん。'
+        },
+        {
+            cond = hiragana == '',
+            ret = content .. 'のよみがわかりませんでした。'
         },
         {
             cond = shibariLtrEndTime > os.time() and lastWord ~= prefix and

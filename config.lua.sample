@@ -1,7 +1,4 @@
 return {
-    -- Yahoo デベロッパーネットワークの Client ID
-    yomiApiId = '',
-
     -- Discord トークン、Bot ページより取得
     discordBotToken = '',
 

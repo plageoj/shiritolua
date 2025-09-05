@@ -33,10 +33,6 @@ docker run --rm -it --name shiritolua -e SHIRITOLUA_CONFIG="$(cat config.lua)" s
 
 Heroku では環境変数 `SHIRITOLUA_CONFIG` に記述してください。
 
-### `yomiApiId` (string)
-
-[Yahoo! JAPAN Web API](https://e.developer.yahoo.co.jp/dashboard/) のアプリケーション ID を記述します。
-
 ### `discordBotToken` (string)
 
 [Discord Applications](https://discordapp.com/developers/applications/) → Bot から Token を取得して記述します。

@@ -3,6 +3,7 @@ local http = require 'coro-http'
 local querystring = require 'querystring'
 
 local kana = require './kana.lua'
+local zlib = require 'zlib'
 
 local _M = {}
 
@@ -63,20 +64,6 @@ function _M.searchDic(string)
     return not analyzedText:find('(OOV)'), kana.katakana_to_hiragana(katakana)
 end
 
-local function encode(string)
-    local ret = ''
-    string = tostring(string)
-    for i = 1, #string do
-        local char = string:byte(i)
-        if char > 0x7f then
-            ret = ret .. string.format('%%%X', char)
-        else
-            ret = ret .. string.char(char)
-        end
-    end
-    return ret
-end
-
 local function buildGetUrl(url, query)
     if not query then
         return url
@@ -100,9 +87,11 @@ function _M.seekWiki(title)
                 }
             ),
             {
-                ['User-Agent'] = 'Shiritolua/equaaqua@hotmail.com'
+                {'User-Agent', 'ShiritoluaBot/0.0 (https://github.com/plageoj/shiritolua; equaaqua@hotmail.com) luvi/2.15.0 libuv/1.48.0'},
+                {'Accept-Encoding', 'gzip'},
             }
         )
+    body = zlib.inflate()(body)
     local res = json.decode(body)
     if not res or not res.pages or #res.pages == 0 then
         return false

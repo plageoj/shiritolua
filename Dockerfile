@@ -4,13 +4,14 @@ ARG SUDACHI_VERSION=0.7.5
 ARG DICTIONARY_VERSION=20250515
 
 ENV SUDACHI_VERSION=${SUDACHI_VERSION}
-ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
+ENV LANG=C.UTF-8 LC_ALL=C.UTF-8 LUA_CPATH=./?.so;/usr/local/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;/usr/lib/x86_64-linux-gnu/lua/5.1/?.so
 
 RUN apt-get update -yqq \
     && apt-get install -yqq --no-install-recommends \
     ca-certificates \
     curl \
-    openjdk-17-jre-headless \
+    default-jre \
+    lua-zlib \
     unzip \
     && rm -rf /var/lib/apt/lists/* \
     && useradd -m -d /app work \
